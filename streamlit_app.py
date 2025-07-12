@@ -35,10 +35,11 @@ def load_data():
         df["Year"] = df["Date"].dt.year
         df["Month"] = df["Date"].dt.month_name()
         df["Weekday"] = df["Date"].dt.day_name()
+        merit_numeric = pd.to_numeric(df["Merit"], errors="coerce")
+        df["Rating"] = merit_numeric.shift(1).fillna(0) + merit_numeric.fillna(0)
         numeric_cols = ["Game-Diff", "Rating", "Quimica", "Rendiment", "Merit", "Rating"]
         for col in numeric_cols:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-        df["Rating"] = df["Merit"].cumsum()    
         return df
     except Exception as e:
         st.error(f"Error al cargar datos: {e}. Usando datos de respaldo o datos vacíos.")
