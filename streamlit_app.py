@@ -35,7 +35,8 @@ def load_data():
         df["Year"] = df["Date"].dt.year
         df["Month"] = df["Date"].dt.month_name()
         df["Weekday"] = df["Date"].dt.day_name()
-        df["Rating"] = df["Merit"].shift(1) + df["Merit"]        
+        df["Merit"] = pd.to_numeric(df["Merit"], errors="coerce").fillna(0)
+        df["Rating"] = df["Merit"].cumsum()    
         df["Result"] = df["Result"].fillna("N").str.upper().replace({"WIN": "W", "LOSS": "L", "NO RESULT": "N"})
         if not df["Result"].isin(["W", "L", "N"]).all():
             st.warning("Advertencia: Columna 'Result' contiene valores no válidos. Se usarán 'W', 'L', 'N'.")
