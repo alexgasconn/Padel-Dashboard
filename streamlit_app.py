@@ -29,8 +29,7 @@ def load_data():
         df = pd.read_csv(url, parse_dates=["Date"], dayfirst=True)
         # Validate and clean data
         df["Hour"] = pd.to_datetime(df["Hour"], format="%H:%M", errors="coerce").dt.time
-        df["Year"] = df[" CCA
-        Date"].dt.year
+        df["Year"] = df["Date"].dt.year
         df["Month"] = df["Date"].dt.month_name()
         df["Weekday"] = df["Date"].dt.day_name()
         df["Result"] = df["Result"].fillna("N").str.upper().replace({"WIN": "W", "LOSS": "L", "NO RESULT": "N"})
