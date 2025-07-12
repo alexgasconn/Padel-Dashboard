@@ -35,14 +35,10 @@ def load_data():
         df["Year"] = df["Date"].dt.year
         df["Month"] = df["Date"].dt.month_name()
         df["Weekday"] = df["Date"].dt.day_name()
-        df["Merit"] = pd.to_numeric(df["Merit"], errors="coerce").fillna(0)
-        df["Rating"] = df["Merit"].cumsum()    
-        df["Result"] = df["Result"].fillna("N").str.upper().replace({"WIN": "W", "LOSS": "L", "NO RESULT": "N"})
-        if not df["Result"].isin(["W", "L", "N"]).all():
-            st.warning("Advertencia: Columna 'Result' contiene valores no válidos. Se usarán 'W', 'L', 'N'.")
-        numeric_cols = ["Game-Diff", "Rating", "Quimica", "Rendiment"]
+        numeric_cols = ["Game-Diff", "Rating", "Quimica", "Rendiment", "Merit", "Rating"]
         for col in numeric_cols:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+        df["Rating"] = df["Merit"].cumsum()    
         return df
     except Exception as e:
         st.error(f"Error al cargar datos: {e}. Usando datos de respaldo o datos vacíos.")
