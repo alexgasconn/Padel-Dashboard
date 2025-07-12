@@ -30,21 +30,11 @@ def load_data():
     try:
         url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR3HRJ4LcbIqwxl2ffbR-HDjXgG_dNyetWGTOLfcHGU9yl4lGYki2LoFR2hbLdcyCS1bLwPneVSDwCZ/pub?gid=0&single=true&output=csv"
         df = pd.read_csv(url, parse_dates=["Date"], dayfirst=True)
-
-        # --- ORDEN LÓGICO Y CORREGIDO ---
-
-        # 1. Crear columnas básicas que no dependen de otras
+        df = df.sort_values(by="Date").reset_index(drop=True)
         df["Hour"] = pd.to_datetime(df["Hour"], format="%H:%M", errors="coerce").dt.time
         df["Year"] = df["Date"].dt.year
         df["Month"] = df["Date"].dt.month_name()
         df["Weekday"] = df["Date"].dt.day_name()
-        df["Result"] = df["Result"].fillna("N").str.upper().replace({"WIN": "W", "LOSS": "L", "NO RESULT": "N"})
-        if not df["Result"].isin(["W", "L", "N"]).all():
-            st.warning("Advertencia: Columna 'Result' contiene valores no válidos. Se usarán 'W', 'L', 'N'.")
-
-        # 2. (EL PASO MÁS IMPORTANTE) Convertir las columnas numéricas DE ORIGEN a números.
-        #    Si una columna no existe en el CSV, se crea con ceros para evitar que la app falle.
-        #    Si los valores no son numéricos o están vacíos, se convierten en 0.
         numeric_cols_from_source = ["Merit", "Game-Diff", "Quimica", "Rendiment"]
         for col in numeric_cols_from_source:
             if col in df.columns:
@@ -53,12 +43,8 @@ def load_data():
             else:
                 df[col] = 0
                 st.warning(f"Advertencia: La columna '{col}' no se encontró. Se usarán ceros.")
-
-        # 3. AHORA que 'Merit' es una columna numérica limpia, calculamos 'Rating'.
-        #    El cálculo ahora es seguro y correcto.
-        df["Rating"] = df["Merit"].shift(1).fillna(0) + df["Merit"]
-
-        # Ya no se necesita un segundo bucle de limpieza. El proceso ha terminado.
+        df["Rating"] = df["Merit"].cumsum()
+        
         return df
 
     except Exception as e:
