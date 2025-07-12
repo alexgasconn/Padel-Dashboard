@@ -576,4 +576,223 @@ with tabs[5]:
     st.subheader("Consistencia de Rendimiento")
     col1, col2, col3 = st.columns(3)
     col1.metric("Desv. Rating", f"{consistency_metrics['Rating']:.2f}", help="Menor valor = más consistente")
-    col2.metric("Desv. Química", f"{consistency_metrics['Qui
+    col2.metric("Desv. Química", f"{consistency_metrics['Quimica']:.2f}", help="Menor valor = más consistente")
+    col3.metric("Desv. Rendimiento", f"{consistency_metrics['Rendiment']:.2f}", help="Menor valor = más consistente")
+
+# --- TAB 7: Nuevos Análisis ---
+with tabs[6]:
+    st.subheader("🎯 Análisis Avanzados Adicionales")
+    
+    # Form factor analysis
+    st.subheader("📊 Análisis de Forma")
+    
+    # Recent form (last 10 games)
+    recent_games = filtered.sort_values("Date").tail(10)
+    recent_form = recent_games["Result"].tolist()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Forma reciente (últimos 10)", " ".join(recent_form[-10:]))
+        recent_win_rate = (recent_games["Result"] == "W").mean() * 100
+        st.metric("Win Rate reciente", f"{recent_win_rate:.1f}%")
+    
+    with col2:
+        # Monthly performance trend
+        monthly_performance = filtered.groupby(filtered["Date"].dt.to_period("M")).agg({
+            "Result": lambda x: (x == "W").mean() * 100,
+            "Rating": "mean"
+        }).reset_index()
+        monthly_performance["Date"] = monthly_performance["Date"].astype(str)
+        
+        if len(monthly_performance) > 1:
+            trend_chart = alt.Chart(monthly_performance).mark_line(point=True).encode(
+                x=alt.X("Date:T", title="Mes"),
+                y=alt.Y("Result:Q", title="Win Rate (%)"),
+                tooltip=["Date", "Result", "Rating"]
+            ).properties(width=400, height=300, title="Tendencia Mensual")
+            st.altair_chart(trend_chart, use_container_width=True)
+    
+    # Head-to-head analysis (if opponent data exists)
+    if "Opponent" in df.columns:
+        st.subheader("⚔️ Análisis Cara a Cara")
+        
+        # Most played opponents
+        opponent_freq = filtered["Opponent"].value_counts().head(10)
+        
+        freq_chart = alt.Chart(opponent_freq.reset_index()).mark_bar().encode(
+            x=alt.X("count", title="Partidos Jugados"),
+            y=alt.Y("Opponent", sort="-x", title="Rival"),
+            color=alt.value("steelblue"),
+            tooltip=["Opponent", "count"]
+        ).properties(width=600, height=400, title="Rivales Más Enfrentados")
+        st.altair_chart(freq_chart, use_container_width=True)
+    
+    # Performance by game difference
+    st.subheader("🎯 Análisis por Diferencia de Juegos")
+    
+    game_diff_analysis = filtered.groupby("Game-Diff").agg({
+        "Result": ["count", lambda x: (x == "W").sum()],
+        "Rating": "mean"
+    }).reset_index()
+    game_diff_analysis.columns = ["Game_Diff", "Total_Games", "Wins", "Avg_Rating"]
+    game_diff_analysis = game_diff_analysis[game_diff_analysis["Total_Games"] >= 2]  # Filter for significance
+    
+    if not game_diff_analysis.empty:
+        game_diff_chart = alt.Chart(game_diff_analysis).mark_circle(size=100).encode(
+            x=alt.X("Game_Diff:Q", title="Diferencia de Juegos"),
+            y=alt.Y("Avg_Rating:Q", title="Rating Promedio"),
+            size=alt.Size("Total_Games:Q", scale=alt.Scale(range=[100, 500]), title="Partidos"),
+            color=alt.Color("Wins:Q", scale=alt.Scale(scheme="redyellowgreen"), title="Victorias"),
+            tooltip=["Game_Diff", "Avg_Rating", "Total_Games", "Wins"]
+        ).properties(width=800, height=400, title="Rating vs Diferencia de Juegos")
+        st.altair_chart(game_diff_chart, use_container_width=True)
+    
+    # Seasonal analysis
+    st.subheader("🌟 Análisis Estacional")
+    
+    # Add season column
+    filtered_seasonal = filtered.copy()
+    filtered_seasonal["Season"] = filtered_seasonal["Date"].dt.month.apply(
+        lambda x: "Invierno" if x in [12, 1, 2] else
+                 "Primavera" if x in [3, 4, 5] else
+                 "Verano" if x in [6, 7, 8] else "Otoño"
+    )
+    
+    seasonal_performance = filtered_seasonal.groupby("Season").agg({
+        "Result": ["count", lambda x: (x == "W").sum(), lambda x: (x == "W").mean() * 100],
+        "Rating": "mean",
+        "Quimica": "mean",
+        "Rendiment": "mean"
+    }).round(2)
+    
+    seasonal_performance.columns = ["Partidos", "Victorias", "WinRate", "Rating", "Quimica", "Rendiment"]
+    st.dataframe(seasonal_performance.style.format({"WinRate": "{:.1f}%"}), use_container_width=True)
+    
+    # Performance radar chart data
+    st.subheader("📡 Análisis Radar de Rendimiento")
+    
+    # Calculate percentiles for radar chart
+    metrics_for_radar = ["Rating", "Quimica", "Rendiment"]
+    radar_data = []
+    
+    for metric in metrics_for_radar:
+        percentile = (filtered[metric].mean() / filtered[metric].max()) * 100
+        radar_data.append({
+            "metric": metric,
+            "value": percentile,
+            "max_value": 100
+        })
+    
+    radar_df = pd.DataFrame(radar_data)
+    
+    # Simple radar-like visualization using bar chart
+    radar_chart = alt.Chart(radar_df).mark_bar().encode(
+        x=alt.X("value:Q", title="Percentil (%)", scale=alt.Scale(domain=[0, 100])),
+        y=alt.Y("metric:N", title="Métrica"),
+        color=alt.Color("value:Q", scale=alt.Scale(scheme="blues")),
+        tooltip=["metric", "value"]
+    ).properties(width=600, height=300, title="Radar de Rendimiento (Percentiles)")
+    st.altair_chart(radar_chart, use_container_width=True)
+    
+    # Prediction model (simple)
+    st.subheader("🔮 Predicción de Rendimiento")
+    
+    # Simple prediction based on recent trends
+    if len(filtered) >= 10:
+        recent_trend = filtered.sort_values("Date").tail(10)
+        next_game_prediction = {
+            "Rating esperado": recent_trend["Rating"].mean(),
+            "Química esperada": recent_trend["Quimica"].mean(),
+            "Rendimiento esperado": recent_trend["Rendiment"].mean(),
+            "Probabilidad de victoria": (recent_trend["Result"] == "W").mean() * 100
+        }
+        
+        pred_col1, pred_col2, pred_col3, pred_col4 = st.columns(4)
+        pred_col1.metric("🎯 Rating", f"{next_game_prediction['Rating esperado']:.2f}")
+        pred_col2.metric("🤝 Química", f"{next_game_prediction['Química esperada']:.2f}")
+        pred_col3.metric("⚡ Rendimiento", f"{next_game_prediction['Rendimiento esperado']:.2f}")
+        pred_col4.metric("🏆 Prob. Victoria", f"{next_game_prediction['Probabilidad de victoria']:.1f}%")
+        
+        st.info("💡 Predicción basada en los últimos 10 partidos. Úsala como referencia, no como certeza.")
+    
+    # Best and worst performances
+    st.subheader("🏅 Mejores y Peores Actuaciones")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**🏆 Mejores Actuaciones**")
+        best_games = filtered.nlargest(5, "Rating")[["Date", "Teammate", "Location", "Rating", "Result"]]
+        st.dataframe(best_games.style.format({"Rating": "{:.2f}"}), use_container_width=True)
+    
+    with col2:
+        st.write("**💔 Peores Actuaciones**")
+        worst_games = filtered.nsmallest(5, "Rating")[["Date", "Teammate", "Location", "Rating", "Result"]]
+        st.dataframe(worst_games.style.format({"Rating": "{:.2f}"}), use_container_width=True)
+    
+    # Success factors analysis
+    st.subheader("🎯 Factores de Éxito")
+    
+    # Compare wins vs losses
+    success_factors = filtered.groupby("Result").agg({
+        "Rating": "mean",
+        "Quimica": "mean",
+        "Rendiment": "mean",
+        "Game-Diff": "mean"
+    }).round(2)
+    
+    if "W" in success_factors.index and "L" in success_factors.index:
+        success_diff = success_factors.loc["W"] - success_factors.loc["L"]
+        
+        st.write("**Diferencia promedio entre victorias y derrotas:**")
+        diff_col1, diff_col2, diff_col3, diff_col4 = st.columns(4)
+        diff_col1.metric("Rating", f"+{success_diff['Rating']:.2f}")
+        diff_col2.metric("Química", f"+{success_diff['Quimica']:.2f}")
+        diff_col3.metric("Rendimiento", f"+{success_diff['Rendiment']:.2f}")
+        diff_col4.metric("Dif. Juegos", f"+{success_diff['Game-Diff']:.2f}")
+    
+    # Key insights
+    st.subheader("💡 Insights Clave")
+    
+    insights = []
+    
+    # Best teammate
+    if not teammates_df.empty:
+        best_teammate = teammates_df.iloc[0]
+        insights.append(f"🤝 Tu mejor compañero es **{best_teammate['Compañero']}** con {best_teammate['Probabilidad_Victoria']:.1f}% de probabilidad de victoria")
+    
+    # Best location
+    if not locations_df.empty:
+        best_location = locations_df.iloc[0]
+        insights.append(f"📍 Tu mejor lugar es **{best_location['Lugar']}** con {best_location['Probabilidad_Victoria']:.1f}% de probabilidad de victoria")
+    
+    # Best time
+    if not hours_df.empty:
+        best_hour = hours_df.iloc[0]
+        insights.append(f"🕒 Tu mejor hora es **{best_hour['Hora']}** con {best_hour['Probabilidad_Victoria']:.1f}% de probabilidad de victoria")
+    
+    # Win rate insight
+    if win_rate > 60:
+        insights.append(f"🏆 Tienes un excelente win rate del {win_rate:.1f}%")
+    elif win_rate > 45:
+        insights.append(f"👍 Tienes un win rate sólido del {win_rate:.1f}%")
+    else:
+        insights.append(f"📈 Hay margen de mejora con un win rate del {win_rate:.1f}%")
+    
+    # Recent form insight
+    if len(recent_form) >= 5:
+        recent_wins = recent_form[-5:].count("W")
+        if recent_wins >= 4:
+            insights.append("🔥 Estás en muy buena forma en los últimos partidos")
+        elif recent_wins >= 3:
+            insights.append("👌 Tu forma reciente es positiva")
+        else:
+            insights.append("🔄 Considera analizar qué cambiar para mejorar tu forma reciente")
+    
+    for insight in insights:
+        st.write(f"• {insight}")
+
+# --- FOOTER ---
+st.markdown("---")
+st.markdown("*Dashboard creado para análisis avanzado de rendimiento en pádel* 🎾")
+st.markdown(f"*Última actualización: {datetime.now().strftime('%d/%m/%Y %H:%M')}*")
