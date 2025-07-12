@@ -48,6 +48,7 @@ def load_data():
         numeric_cols_from_source = ["Merit", "Game-Diff", "Quimica", "Rendiment"]
         for col in numeric_cols_from_source:
             if col in df.columns:
+                df[col] = df[col].astype(str).str.replace(',', '.', regex=False)
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
             else:
                 df[col] = 0
