@@ -13,7 +13,7 @@ st.title("📈 Dashboard Pádel Personal")
 @st.cache_data
 
 def load_data():
-    url = "https://docs.google.com/spreadsheets/d/e/PUT_YOUR_PUBLISHED_URL_HERE/pub?output=csv"
+    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR3HRJ4LcbIqwxl2ffbR-HDjXgG_dNyetWGTOLfcHGU9yl4lGYki2LoFR2hbLdcyCS1bLwPneVSDwCZ/pub?gid=0&single=true&output=csv"
     df = pd.read_csv(url, parse_dates=["Date"], dayfirst=True)
     df["Hour"] = pd.to_datetime(df["Hour"], format="%H:%M", errors="coerce").dt.time
     df["Year"] = df["Date"].dt.year
