@@ -63,7 +63,6 @@ def render(filtered_df, teammates_df):
             df_line.set_index("Date")
             .groupby("Teammate")
             .apply(lambda x: x.reindex(all_dates, fill_value=np.nan))
-            .reset_index(level=0)
             .reset_index()
             .rename(columns={"index": "Date"})
         )
