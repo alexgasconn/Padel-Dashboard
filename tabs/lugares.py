@@ -1,108 +1,119 @@
-# tabs/lugares.py
+# tabs/temporal.py
 import streamlit as st
 import altair as alt
 import pandas as pd
-import numpy as np
 
-def render(filtered_df, locations_df):
-    st.subheader("Análisis de Rendimiento por Lugar")
+def render(filtered_df):
+    st.subheader("Análisis de Rendimiento a lo Largo del Tiempo")
 
-    if locations_df.empty:
-        st.info("No hay datos de lugares para mostrar con los filtros actuales.")
+    if filtered_df.empty:
+        st.info("No hay datos para el análisis temporal con los filtros actuales.")
         return
 
-    # --- Gráfico 1: Probabilidad de Victoria por Lugar ---
-    st.markdown("#### Probabilidad de Victoria")
-    st.write("Calcula una probabilidad de victoria ponderada para cada lugar, considerando múltiples factores de tu rendimiento.")
+    # --- Gráfico 1: Evolución del Rating ---
+    st.markdown("#### Evolución de tu Nivel General (Suavizada)")
+    st.write("Esta línea muestra la **tendencia de tu Rating Acumulado** (media móvil de 5 partidos) para visualizar tu progreso a largo plazo de forma más clara.")
     
-    location_prob_chart = alt.Chart(locations_df).mark_bar().encode(
-        x=alt.X("Lugar:N", sort="-y", title="Lugar"),
-        y=alt.Y("Probabilidad_Victoria:Q", title="Probabilidad de Victoria (%)", scale=alt.Scale(domain=[0, 100])),
-        color=alt.Color("Probabilidad_Victoria:Q", scale=alt.Scale(scheme="redyellowgreen"), legend=alt.Legend(title="Probabilidad")),
-        tooltip=["Lugar", "Probabilidad_Victoria", "Total_Partidos", "Win_Rate_Sin_Empates", "Merit_Avg"]
-    ).properties(title="Probabilidad de Victoria por Lugar")
-    st.altair_chart(location_prob_chart, use_container_width=True)
-    st.divider()
+    df_sorted = filtered_df.sort_values("Date").reset_index(drop=True)
+    df_sorted['Rating_Acumulado'] = df_sorted['Merit'].cumsum()
+    df_sorted['Rating_Suavizado'] = df_sorted['Rating_Acumulado'].rolling(window=5, min_periods=1).mean()
 
-    # --- Gráfico 2: Cluster de Rendimiento ---
-    st.markdown("#### Cluster de Rendimiento")
-    st.write("Compara el Merit y Rendimiento promedio en cada lugar. El tamaño del punto indica el número de partidos jugados.")
-
-    location_metrics = alt.Chart(locations_df).mark_point(size=150, filled=True, opacity=0.8).encode(
-        x=alt.X("Merit_Avg:Q", title="Merit Promedio"),
-        y=alt.Y("Rendiment_Avg:Q", title="Rendimiento Promedio"),
-        color=alt.Color("Probabilidad_Victoria:Q", scale=alt.Scale(scheme="redyellowgreen"), title="Prob. Victoria"),
-        size=alt.Size("Total_Partidos:Q", scale=alt.Scale(range=[100, 500]), title="Partidos Jugados"),
-        tooltip=["Lugar", "Merit_Avg", "Rendiment_Avg", "Probabilidad_Victoria", "Total_Partidos"]
+    rating_line = alt.Chart(df_sorted).mark_line(
+        color='cornflowerblue', 
+        strokeWidth=3,
+        point=alt.OverlayMarkDef(color="red", size=20, opacity=0)
+    ).encode(
+        x=alt.X("Date:T", title="Fecha"),
+        y=alt.Y('Rating_Suavizado:Q', title='Rating Acumulado (Suavizado)', scale=alt.Scale(zero=False)),
+        tooltip=[
+            alt.Tooltip('Date:T', title='Fecha'),
+            alt.Tooltip('Rating_Suavizado:Q', title='Rating Suavizado', format='.2f'),
+            alt.Tooltip('Rating_Acumulado:Q', title='Rating Real (ese día)', format='.2f'),
+            alt.Tooltip('Teammate:N', title='Compañero'),
+            alt.Tooltip('Result:N', title='Resultado'),
+        ]
     ).properties(
-        title="Métricas de Rendimiento por Lugar"
+        title="Evolución del Rating Acumulado (Media Móvil de 5 Partidos)"
     ).interactive()
-    st.altair_chart(location_metrics, use_container_width=True)
+    
+    st.altair_chart(rating_line, use_container_width=True)
     st.divider()
 
-    # --- Gráfico 3: Evolución de Merit Acumulado por Lugar ---
-    st.markdown("#### Evolución del Aporte (Merit Acumulado) por Lugar")
-    st.write("Muestra cómo ha evolucionado tu aporte neto (Merit) en tus 5 canchas más frecuentes a lo largo del tiempo.")
+    # --- Gráfico 2: Heatmap por Momento del Día ---
+    st.markdown("#### ¿Cuándo Juegas Más? Frecuencia por Momento del Día")
+    st.write("El color de cada celda indica el **número de partidos jugados**. Pasa el ratón para ver el % de victorias y otras estadísticas.")
     
-    if "Lugar" in filtered_df.columns and not filtered_df.empty:
-        top_places_evo = filtered_df['Lugar'].value_counts().nlargest(5).index
-        df_top_evo = filtered_df[filtered_df['Lugar'].isin(top_places_evo)].copy()
+    temp_df_daily = filtered_df.copy()
+    
+    def get_time_of_day(hour_obj):
+        if pd.isna(hour_obj): return "No especificado"
+        h = hour_obj.hour
+        if 5 <= h <= 11: return "Mañana (5-11)"
+        if 12 <= h <= 16: return "Mediodía (12-16)"
+        if 17 <= h <= 20: return "Tarde (17-20)"
+        return "Noche (21-4)"
 
-        if not df_top_evo.empty:
-            df_top_evo['Date'] = pd.to_datetime(df_top_evo['Date'])
-            date_range = pd.date_range(start=df_top_evo['Date'].min(), end=df_top_evo['Date'].max(), freq='D')
-            multi_index = pd.MultiIndex.from_product([top_places_evo, date_range], names=['Lugar', 'Date'])
-            df_played = df_top_evo.groupby(['Lugar', 'Date'])['Merit'].sum().reset_index()
-            df_full = df_played.set_index(['Lugar', 'Date']).reindex(multi_index, fill_value=0).reset_index()
-            df_full['Merit_Cumsum'] = df_full.groupby('Lugar')['Merit'].cumsum()
-            df_full['Tooltip_Merit'] = df_full['Merit'].replace(0, np.nan)
+    temp_df_daily['TimeOfDay'] = temp_df_daily['Hour'].apply(get_time_of_day)
+    time_order = ["Mañana (5-11)", "Mediodía (12-16)", "Tarde (17-20)", "Noche (21-4)", "No especificado"]
+    
+    heatmap_data_daily = temp_df_daily.groupby(["Weekday", "TimeOfDay"]).agg(
+        Partidos=("Result", "count"),
+        WinRate=("Result", lambda x: (x == 'W').mean() * 100),
+        Merit_Avg=("Merit", "mean")
+    ).reset_index()
+    
+    weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-            line_chart = alt.Chart(df_full).mark_line().encode(
-                x=alt.X('Date:T', title='Fecha'),
-                y=alt.Y('Merit_Cumsum:Q', title='Merit Acumulado'),
-                color=alt.Color('Lugar:N', title='Lugar'),
-                tooltip=[alt.Tooltip('Date:T', title='Fecha'), alt.Tooltip('Lugar:N', title='Lugar'), alt.Tooltip('Merit_Cumsum:Q', title='Merit Acumulado'), alt.Tooltip('Tooltip_Merit:Q', title='Merit de este Partido (si se jugó)')]
-            ).properties(title="Evolución de Merit Acumulado en Lugares Frecuentes").interactive()
-            st.altair_chart(line_chart, use_container_width=True)
+    heatmap_daily = alt.Chart(heatmap_data_daily).mark_rect().encode(
+        x=alt.X("TimeOfDay:N", title="Momento del Día", sort=time_order),
+        y=alt.Y("Weekday:N", title="Día de la semana", sort=weekday_order),
+        # CORRECCIÓN: Cambiado 'coolwarm' por 'viridis' que es un esquema válido en Altair
+        color=alt.Color("Partidos:Q", title="Nº de Partidos", scale=alt.Scale(scheme="viridis")),
+        tooltip=[
+            alt.Tooltip("Weekday:N", title="Día"), 
+            alt.Tooltip("TimeOfDay:N", title="Momento del Día"), 
+            alt.Tooltip("Partidos:Q", title="Nº Partidos"),
+            alt.Tooltip("WinRate:Q", title="% Victorias", format=".1f"), 
+            alt.Tooltip("Merit_Avg:Q", title="Merit Promedio", format=".2f")
+        ]
+    ).properties(title="Heatmap de Frecuencia de Partidos por Momento del Día")
+    
+    st.altair_chart(heatmap_daily, use_container_width=True)
     st.divider()
+
+    # --- Gráfico 3: Heatmap por Estación y Año ---
+    st.markdown("#### Frecuencia de Juego Estacional")
+    st.write("El color de cada celda indica el **número de partidos jugados** en cada estación. Pasa el ratón para ver el % de victorias.")
     
-    # --- NUEVA SECCIÓN: Racha de los últimos 5 partidos ---
-    st.markdown("#### Estado de Forma en Lugares Frecuentes")
-    st.write("Racha de resultados en los últimos 5 partidos jugados en tus canchas más habituales.")
+    temp_df_seasonal = filtered_df.copy()
 
-    if "Lugar" in filtered_df.columns and not filtered_df.empty:
-        top_places_streak = filtered_df['Lugar'].value_counts().nlargest(5).index
+    def get_season(month_name):
+        if month_name in ["December", "January", "February"]: return "Invierno"
+        if month_name in ["March", "April", "May"]: return "Primavera"
+        if month_name in ["June", "July", "August"]: return "Verano"
+        if month_name in ["September", "October", "November"]: return "Otoño"
+        return "Desconocido"
+        
+    temp_df_seasonal['Season'] = temp_df_seasonal['Month'].apply(get_season)
+    season_order = ["Primavera", "Verano", "Otoño", "Invierno"]
 
-        if len(top_places_streak) > 0:
-            # Usar st.columns para un layout más limpio, hasta 5 columnas
-            cols = st.columns(len(top_places_streak))
-            
-            for i, place in enumerate(top_places_streak):
-                with cols[i]:
-                    st.markdown(f"**{place}**")
-                    # Filtrar partidos para ese lugar y ordenar por fecha para obtener los últimos
-                    place_games = filtered_df[filtered_df['Lugar'] == place].sort_values('Date', ascending=False).head(5)
-                    
-                    if not place_games.empty:
-                        # Crear el string de la racha con iconos
-                        streak_icons = {
-                            'W': '✅',
-                            'L': '❌',
-                            'N': '➖'
-                        }
-                        # Invertir el orden para mostrar del más antiguo al más reciente
-                        streak_str = " ".join([streak_icons.get(res, '❓') for res in place_games['Result'][::-1]])
-                        
-                        # Contar victorias en la racha
-                        wins_in_streak = (place_games['Result'] == 'W').sum()
-                        
-                        st.metric(
-                            label=f"Últimos {len(place_games)} Partidos",
-                            value=streak_str,
-                            delta=f"{wins_in_streak} Victorias",
-                            delta_color="normal"
-                        )
-                    else:
-                        st.write("No hay partidos recientes.")
-        else:
-            st.info("No hay lugares con suficientes partidos para mostrar una racha.")
+    seasonal_data = temp_df_seasonal.groupby(["Year", "Season"]).agg(
+        Partidos=("Result", "count"),
+        WinRate=("Result", lambda x: (x == 'W').mean() * 100)
+    ).reset_index()
+
+    heatmap_seasonal = alt.Chart(seasonal_data).mark_rect().encode(
+        x=alt.X('Season:N', title='Estación del Año', sort=season_order),
+        y=alt.Y('Year:O', title='Año', axis=alt.Axis(labelAngle=0)),
+        color=alt.Color('Partidos:Q', title='Nº de Partidos', scale=alt.Scale(scheme="viridis")),
+        tooltip=[
+            alt.Tooltip('Year:O', title='Año'),
+            alt.Tooltip('Season:N', title='Estación'),
+            alt.Tooltip('Partidos:Q', title='Nº de Partidos'),
+            alt.Tooltip('WinRate:Q', title='% Victorias', format='.1f')
+        ]
+    ).properties(
+        title="Heatmap de Frecuencia de Partidos por Estación y Año"
+    )
+
+    st.altair_chart(heatmap_seasonal, use_container_width=True)
