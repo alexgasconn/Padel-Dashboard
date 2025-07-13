@@ -51,14 +51,35 @@ def render(filtered_df, teammates_df):
             .index
         )
         df_line = filtered_df[filtered_df["Teammate"].isin(top_teammates)].copy()
-        df_line = df_line.sort_values("Date")
         df_line["Date"] = pd.to_datetime(df_line["Date"])
-        df_line["Merit_Cumsum"] = df_line.groupby("Teammate")["Merit"].cumsum()
+        df_line = df_line.sort_values("Date")
 
-        line_chart = alt.Chart(df_line).mark_line().encode(
+        # Crear rango de fechas completo
+        all_dates = pd.date_range(df_line["Date"].min(), df_line["Date"].max())
+
+        # Preparar DataFrame para asegurar que todos los compañeros tengan todas las fechas
+        df_full = (
+            df_line.set_index("Date")
+            .groupby("Teammate")
+            .apply(lambda x: x.reindex(all_dates, fill_value=np.nan))
+            .reset_index(level=0)
+            .reset_index()
+            .rename(columns={"index": "Date"})
+        )
+
+        # Rellenar valores de Merit con 0 donde falten partidos
+        df_full["Merit"] = df_full["Merit"].fillna(0)
+
+        # Calcular Merit acumulado y rolling mean
+        df_full["Merit_Cumsum"] = df_full.groupby("Teammate")["Merit"].cumsum()
+        df_full["Merit_Cumsum_Roll"] = (
+            df_full.groupby("Teammate")["Merit_Cumsum"].transform(lambda x: x.rolling(window=3, min_periods=1).mean())
+        )
+
+        line_chart = alt.Chart(df_full).mark_line().encode(
             x=alt.X("Date:T", title="Fecha"),
-            y=alt.Y("Merit_Cumsum:Q", title="Merit Acumulado"),
+            y=alt.Y("Merit_Cumsum_Roll:Q", title="Merit Acumulado (Rolling Mean 3)"),
             color=alt.Color("Teammate:N", title="Compañero"),
-            tooltip=["Teammate", "Date", "Merit_Cumsum"]
-        ).properties(title="Evolución Acumulada de Merit por Compañero (Top 5)")
+            tooltip=["Teammate", "Date", "Merit_Cumsum_Roll"]
+        ).properties(title="Evolución Acumulada de Merit por Compañero (Top 5, Rolling Mean 3)")
         st.altair_chart(line_chart, use_container_width=True)
