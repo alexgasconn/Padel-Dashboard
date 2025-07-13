@@ -53,7 +53,7 @@ with st.sidebar:
                 st.rerun()
         return selected
 
-    with st.expander("Opciones de filtrado", expanded=True):
+    with st.expander("Opciones de filtrado", expanded=False):
         year = create_multiselect_with_all("Año", sorted(df["Year"].dropna().unique()), "year_filter")
         month = create_multiselect_with_all("Mes", sorted(df["Month"].dropna().unique(), key=lambda m: list(pd.to_datetime(df['Date']).dt.month_name().unique()).index(m)), "month_filter")
         weekday = create_multiselect_with_all("Día de la semana", ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], "weekday_filter")
