@@ -2,6 +2,7 @@
 import streamlit as st
 import altair as alt
 import pandas as pd
+import numpy as np
 
 
 def render(filtered_df, teammates_df):
