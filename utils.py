@@ -3,7 +3,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-@st.cache_data(show_spinner=False)
+# @st.cache_data(show_spinner=False)
+@st.cache(allow_output_mutation=True) 
 def load_data():
     """Carga y pre-procesa los datos desde una URL de Google Sheets."""
     try:
