@@ -704,10 +704,10 @@ with tabs[6]:
         
         st.write("**Diferencia promedio entre victorias y derrotas:**")
         diff_col1, diff_col2, diff_col3, diff_col4 = st.columns(4)
-        diff_col1.metric("Rating", f"+{success_diff['Merit']:.2f}")
-        diff_col2.metric("Química", f"+{success_diff['Quimica']:.2f}")
-        diff_col3.metric("Rendimiento", f"+{success_diff['Rendiment']:.2f}")
-        diff_col4.metric("Dif. Juegos", f"+{success_diff['Game-Diff']:.2f}")
+        diff_col1.metric("Rating", f"+{success_diff.get('Merit', success_diff.iloc[0]):.2f}")
+        diff_col2.metric("Química", f"+{success_diff.get('Quimica', success_diff.iloc[1]):.2f}")
+        diff_col3.metric("Rendimiento", f"+{success_diff.get('Rendiment', success_diff.iloc[2]):.2f}")
+        diff_col4.metric("Dif. Juegos", f"+{success_diff.get('Game-Diff', success_diff.iloc[3]):.2f}")
     
     # Key insights
     st.subheader("💡 Insights Clave")
