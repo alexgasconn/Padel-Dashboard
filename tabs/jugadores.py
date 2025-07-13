@@ -41,9 +41,16 @@ def render(filtered_df, teammates_df):
     teammates_df["WinRate"] = (
         teammates_df["Victorias"] / teammates_df["Total_Partidos"] * 100).round(2)
 
-    # Gráfico de línea: Acumulado de Merit por Compañero a lo largo del tiempo
+    # Gráfico de línea: Acumulado de Merit por Compañero a lo largo del tiempo (solo top 5 con más partidos)
     if "Teammate" in filtered_df.columns and "Merit" in filtered_df.columns and "Date" in filtered_df.columns:
-        df_line = filtered_df.copy()
+        # Obtener top 5 compañeros con más partidos
+        top_teammates = (
+            filtered_df["Teammate"]
+            .value_counts()
+            .nlargest(5)
+            .index
+        )
+        df_line = filtered_df[filtered_df["Teammate"].isin(top_teammates)].copy()
         df_line = df_line.sort_values("Date")
         df_line["Date"] = pd.to_datetime(df_line["Date"])
         df_line["Merit_Cumsum"] = df_line.groupby("Teammate")["Merit"].cumsum()
@@ -53,5 +60,5 @@ def render(filtered_df, teammates_df):
             y=alt.Y("Merit_Cumsum:Q", title="Merit Acumulado"),
             color=alt.Color("Teammate:N", title="Compañero"),
             tooltip=["Teammate", "Date", "Merit_Cumsum"]
-        ).properties(title="Evolución Acumulada de Merit por Compañero")
+        ).properties(title="Evolución Acumulada de Merit por Compañero (Top 5)")
         st.altair_chart(line_chart, use_container_width=True)
