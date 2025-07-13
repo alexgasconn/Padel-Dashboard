@@ -290,14 +290,26 @@ with tabs[2]:
         alt.selection_interval(bind='scales')
     )
     
+    # Apply a rolling mean to smooth the rating evolution
+    rating_by_date["Rating_Rolling"] = rating_by_date["Rating"].rolling(window=5, min_periods=1).mean()
+
     rating_line = base.mark_line(color='blue').encode(
         x=alt.X("Date:T", title="Fecha"),
-        y=alt.Y("Rating:Q", title="Rating", scale=alt.Scale(zero=False)),
-        tooltip=["Date", "Rating"]
+        y=alt.Y("Rating_Rolling:Q", title="Rating (Media Móvil)", scale=alt.Scale(zero=False)),
+        tooltip=["Date", "Rating_Rolling"]
     )
     
-    winrate_line = base.mark_line(color='green').encode(
-        x=alt.X("Date:T"),
+    # Agrupar por bloques de 5 partidos para suavizar el win rate
+    filtered_sorted = filtered.sort_values("Date").reset_index(drop=True)
+    filtered_sorted["Game_Group"] = (filtered_sorted.index // 5) + 1
+
+    winrate_by_group = filtered_sorted.groupby("Game_Group").agg({
+        "Date": "max",
+        "Result": lambda x: (x == "W").mean() * 100
+    }).reset_index()
+
+    winrate_line = alt.Chart(winrate_by_group).mark_line(color='green').encode(
+        x=alt.X("Date:T", title="Fecha (cada 5 partidos)"),
         y=alt.Y("Result:Q", title="Win Rate (%)", scale=alt.Scale(zero=False)),
         tooltip=["Date", "Result"]
     )
