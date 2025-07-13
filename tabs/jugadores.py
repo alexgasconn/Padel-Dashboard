@@ -1,6 +1,7 @@
 # tabs/jugadores.py
 import streamlit as st
 import altair as alt
+import pandas as pd
 
 
 def render(filtered_df, teammates_df):
@@ -35,64 +36,64 @@ def render(filtered_df, teammates_df):
 
     st.markdown("### Estadísticas de Compañeros")
 
-    # Top compañeros por número de partidos
-    top_partidos = teammates_df.sort_values(
-        "Total_Partidos", ascending=False).head(10)
-    st.markdown("#### Compañeros con más partidos jugados")
-    cols = ["Compañero", "Total_Partidos", "Victorias", "Derrotas", "Probabilidad_Victoria"]
-    cols_presentes = [c for c in cols if c in top_partidos.columns]
-    st.dataframe(top_partidos[cols_presentes])
+    # Cálculo de win rate real (Victorias / Total_Partidos)
+    teammates_df = teammates_df.copy()
+    teammates_df["WinRate"] = (teammates_df["Victorias"] / teammates_df["Total_Partidos"] * 100).round(2)
 
-    # Top compañeros por victorias
-    top_victorias = teammates_df.sort_values(
-        "Victorias", ascending=False).head(10)
-    st.markdown("#### Compañeros con más victorias")
-    cols2 = ["Compañero", "Victorias", "Total_Partidos", "Probabilidad_Victoria"]
-    cols2_presentes = [c for c in cols2 if c in top_victorias.columns]
-    st.dataframe(top_victorias[cols2_presentes])
-
-    # Mejores % victoria (mínimo 5 partidos)
+    # Top compañeros por win rate (mínimo 5 partidos)
     min_partidos = 5
-    mejores_porcentaje = teammates_df[teammates_df["Total_Partidos"]
-                                      >= min_partidos]
-    mejores_porcentaje = mejores_porcentaje.sort_values(
-        "Probabilidad_Victoria", ascending=False).head(10)
-    st.markdown(
-        f"#### Mejores compañeros por % de victoria (mínimo {min_partidos} partidos)")
-    cols3 = ["Compañero", "Probabilidad_Victoria", "Total_Partidos", "Victorias"]
-    cols3_presentes = [c for c in cols3 if c in mejores_porcentaje.columns]
-    st.dataframe(mejores_porcentaje[cols3_presentes])
+    top_winrate = teammates_df[teammates_df["Total_Partidos"] >= min_partidos].sort_values(
+        "WinRate", ascending=False).head(10)
+    st.markdown(f"#### Mejores compañeros por win rate (mínimo {min_partidos} partidos)")
+    st.dataframe(top_winrate[["Compañero", "WinRate", "Total_Partidos", "Victorias", "Derrotas"]])
 
-    # Gráfico de barras: Top 5 compañeros por partidos jugados
-    bar_top_partidos = alt.Chart(top_partidos.head(5)).mark_bar().encode(
-        x=alt.X("Compañero:N", sort="-y"),
-        y=alt.Y("Total_Partidos:Q"),
-        color=alt.Color("Total_Partidos:Q", scale=alt.Scale(scheme="blues")),
-        tooltip=["Compañero", "Total_Partidos",
-                 "Victorias", "Probabilidad_Victoria"]
-    ).properties(title="Top 5 compañeros por partidos jugados")
-    st.altair_chart(bar_top_partidos, use_container_width=True)
+    # Rachas de victorias/derrotas por compañero (si hay fechas)
+    if "Fecha" in filtered_df.columns and "Teammate" in filtered_df.columns:
+        st.markdown("#### Rachas recientes con compañeros")
+        streaks = []
+        for teammate, group in filtered_df.groupby("Teammate"):
+            group = group.sort_values("Date")
+            results = group["Result"].tolist()
+            max_win_streak = max_streak = curr = 0
+            for r in results:
+                if r == "W":
+                    curr += 1
+                    max_win_streak = max(max_win_streak, curr)
+                else:
+                    curr = 0
+            streaks.append({"Compañero": teammate, "Mejor_Racha_Victorias": max_win_streak})
+        streaks_df = pd.DataFrame(streaks).sort_values("Mejor_Racha_Victorias", ascending=False).head(10)
+        st.dataframe(streaks_df)
 
-    # Gráfico de barras: Top 5 compañeros por victorias
-    bar_top_victorias = alt.Chart(top_victorias.head(5)).mark_bar().encode(
-        x=alt.X("Compañero:N", sort="-y"),
-        y=alt.Y("Victorias:Q"),
-        color=alt.Color("Victorias:Q", scale=alt.Scale(scheme="greens")),
-        tooltip=["Compañero", "Victorias",
-                 "Total_Partidos", "Probabilidad_Victoria"]
-    ).properties(title="Top 5 compañeros por victorias")
-    st.altair_chart(bar_top_victorias, use_container_width=True)
+    # Boxplot/Violinplot de win rate por compañero (solo si hay suficientes datos)
+    if len(teammates_df) >= 5:
+        st.markdown("#### Distribución del win rate entre compañeros")
+        box = alt.Chart(teammates_df).mark_boxplot(extent='min-max').encode(
+            y=alt.Y("WinRate:Q", title="Win Rate (%)"),
+            tooltip=["Compañero", "WinRate", "Total_Partidos"]
+        ).properties(width=200, height=400)
+        st.altair_chart(box, use_container_width=True)
 
-    # Gráfico de líneas: Evolución de % victoria con cada compañero (si hay fechas)
+        violin = alt.Chart(teammates_df).transform_density(
+            "WinRate",
+            as_=["WinRate", "density"],
+            groupby=["Compañero"]
+        ).mark_area(orient="horizontal", opacity=0.5).encode(
+            y=alt.Y("Compañero:N", sort="-x"),
+            x=alt.X("WinRate:Q"),
+            color=alt.Color("Compañero:N", legend=None),
+            tooltip=["Compañero"]
+        ).properties(width=400, height=300)
+        st.altair_chart(violin, use_container_width=True)
+
+    # Evolución temporal del win rate (si hay fechas)
     if "Fecha" in teammates_df.columns:
-        st.markdown(
-            "#### Evolución temporal de la probabilidad de victoria con cada compañero")
+        st.markdown("#### Evolución temporal del win rate con cada compañero")
         line_chart = alt.Chart(teammates_df).mark_line(point=True).encode(
             x=alt.X("Fecha:T", title="Fecha"),
-            y=alt.Y("Probabilidad_Victoria:Q",
-                    title="Probabilidad de Victoria (%)"),
+            y=alt.Y("WinRate:Q", title="Win Rate (%)"),
             color="Compañero:N",
-            tooltip=["Compañero", "Probabilidad_Victoria", "Fecha"]
+            tooltip=["Compañero", "WinRate", "Fecha"]
         ).properties(height=400)
         st.altair_chart(line_chart, use_container_width=True)
 
@@ -101,11 +102,12 @@ def render(filtered_df, teammates_df):
     total_partidos = teammates_df["Total_Partidos"].sum()
     total_victorias = teammates_df["Victorias"].sum()
     total_derrotas = teammates_df["Derrotas"].sum()
-    media_victoria = teammates_df["Probabilidad_Victoria"].mean()
+    media_winrate = teammates_df["WinRate"].mean()
+    mejor_winrate = teammates_df["WinRate"].max()
+    peor_winrate = teammates_df["WinRate"].min()
     st.metric("Total de partidos jugados con compañeros", total_partidos)
     st.metric("Total de victorias con compañeros", total_victorias)
     st.metric("Total de derrotas con compañeros", total_derrotas)
-    st.metric("Media de % de victoria con compañeros",
-              f"{media_victoria:.2f}%")
-
-    st.write("Columnas disponibles:", top_partidos.columns.tolist())
+    st.metric("Media de win rate con compañeros", f"{media_winrate:.2f}%")
+    st.metric("Mejor win rate", f"{mejor_winrate:.2f}%")
+    st.metric("Peor win rate", f"{peor_winrate:.2f}%")
