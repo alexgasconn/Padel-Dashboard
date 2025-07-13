@@ -231,7 +231,7 @@ with tabs[0]:
         x=alt.X("Quimica", title="Química", scale=alt.Scale(zero=False)),
         y=alt.Y("Rendiment", title="Rendimiento", scale=alt.Scale(zero=False)),
         color=alt.Color("Result", scale=alt.Scale(domain=["W", "L", "N"], range=["green", "red", "gray"])),
-        size=alt.Size("Rating", scale=alt.Scale(range=[50, 300])),
+        size=alt.Size("Merit", scale=alt.Scale(range=[50, 300])),
         tooltip=["Teammate", "Quimica", "Rendiment", "Rating", "Result", "Date"]
     ).properties(width=800, height=400, title="Química vs. Rendimiento (tamaño = Rating)")
     st.altair_chart(scatter, use_container_width=True)
