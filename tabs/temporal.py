@@ -73,7 +73,7 @@ def render(filtered_df):
     heatmap_daily = alt.Chart(heatmap_data_daily).mark_rect().encode(
         x=alt.X("TimeOfDay:N", title="Momento del Día", sort=time_order),
         y=alt.Y("Weekday:N", title="Día de la semana", sort=weekday_order),
-        color=alt.Color("Partidos:Q", title="Nº de Partidos", scale=alt.Scale(scheme="viridis")),
+        color=alt.Color("Partidos:Q", title="Nº de Partidos", scale=alt.Scale(scheme="coolwarm")),
         tooltip=[
             alt.Tooltip("Weekday:N", title="Día"), 
             alt.Tooltip("TimeOfDay:N", title="Momento del Día"), 
@@ -110,7 +110,7 @@ def render(filtered_df):
     heatmap_seasonal = alt.Chart(seasonal_data).mark_rect().encode(
         x=alt.X('Season:N', title='Estación del Año', sort=season_order),
         y=alt.Y('Year:O', title='Año', axis=alt.Axis(labelAngle=0)),
-        color=alt.Color('Partidos:Q', title='Nº de Partidos', scale=alt.Scale(scheme="viridis")),
+        color=alt.Color('Partidos:Q', title='Nº de Partidos', scale=alt.Scale(scheme="coolwarm")),
         tooltip=[
             alt.Tooltip('Year:O', title='Año'),
             alt.Tooltip('Season:N', title='Estación'),
