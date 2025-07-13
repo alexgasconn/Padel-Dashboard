@@ -3,7 +3,7 @@ import streamlit as st
 import altair as alt
 import pandas as pd
 
-def render(filtered_df):
+def render(filtered_df, locations_df):
     st.subheader("Análisis de Rendimiento a lo Largo del Tiempo")
 
     if filtered_df.empty:
