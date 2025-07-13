@@ -552,19 +552,22 @@ with tabs[6]:
         st.metric("Win Rate reciente", f"{recent_win_rate:.1f}%")
     
     with col2:
-        # Monthly performance trend
+        # Monthly performance trend with rolling mean
         monthly_performance = filtered.groupby(filtered["Date"].dt.to_period("M")).agg({
             "Result": lambda x: (x == "W").mean() * 100,
             "Rating": "mean"
         }).reset_index()
         monthly_performance["Date"] = monthly_performance["Date"].astype(str)
+        # Apply rolling mean for smoothing (window=2)
+        monthly_performance["WinRate_Rolling"] = monthly_performance["Result"].rolling(window=2, min_periods=1).mean()
+        monthly_performance["Rating_Rolling"] = monthly_performance["Rating"].rolling(window=2, min_periods=1).mean()
         
         if len(monthly_performance) > 1:
             trend_chart = alt.Chart(monthly_performance).mark_line(point=True).encode(
-                x=alt.X("Date:T", title="Mes"),
-                y=alt.Y("Result:Q", title="Win Rate (%)"),
-                tooltip=["Date", "Result", "Rating"]
-            ).properties(width=400, height=300, title="Tendencia Mensual")
+            x=alt.X("Date:T", title="Mes"),
+            y=alt.Y("WinRate_Rolling:Q", title="Win Rate (%)"),
+            tooltip=["Date", "Result", "WinRate_Rolling", "Rating", "Rating_Rolling"]
+            ).properties(width=400, height=300, title="Tendencia Mensual (Suavizada)")
             st.altair_chart(trend_chart, use_container_width=True)
     
     # Head-to-head analysis (if opponent data exists)
@@ -677,20 +680,20 @@ with tabs[6]:
     
     with col1:
         st.write("**🏆 Mejores Actuaciones**")
-        best_games = filtered.nlargest(5, "Rating")[["Date", "Teammate", "Location", "Rating", "Result"]]
-        st.dataframe(best_games.style.format({"Rating": "{:.2f}"}), use_container_width=True)
-    
+        best_games = filtered.nlargest(5, "Merit")[["Date", "Teammate", "Location", "Merit", "Result"]]
+        st.dataframe(best_games.style.format({"Merit": "{:.2f}"}), use_container_width=True)
+
     with col2:
         st.write("**💔 Peores Actuaciones**")
-        worst_games = filtered.nsmallest(5, "Rating")[["Date", "Teammate", "Location", "Rating", "Result"]]
-        st.dataframe(worst_games.style.format({"Rating": "{:.2f}"}), use_container_width=True)
-    
+        worst_games = filtered.nsmallest(5, "Merit")[["Date", "Teammate", "Location", "Merit", "Result"]]
+        st.dataframe(worst_games.style.format({"Merit": "{:.2f}"}), use_container_width=True)
+
     # Success factors analysis
     st.subheader("🎯 Factores de Éxito")
     
     # Compare wins vs losses
     success_factors = filtered.groupby("Result").agg({
-        "Rating": "mean",
+        "Merit": "mean",
         "Quimica": "mean",
         "Rendiment": "mean",
         "Game-Diff": "mean"
@@ -743,6 +746,32 @@ with tabs[6]:
             insights.append("👌 Tu forma reciente es positiva")
         else:
             insights.append("🔄 Considera analizar qué cambiar para mejorar tu forma reciente")
+
+    # Streaks insight
+    if win_streaks and max(win_streaks) >= 4:
+        insights.append(f"🔥 Has tenido una racha de {max(win_streaks)} victorias consecutivas")
+    if loss_streaks and max(loss_streaks) >= 3:
+        insights.append(f"❗ Atención: tuviste una racha de {max(loss_streaks)} derrotas seguidas")
+
+    # Consistency insight
+    if consistency_metrics['Merit'] < 1.5:
+        insights.append("🔒 Tu rendimiento es muy consistente entre partidos")
+    elif consistency_metrics['Merit'] < 3:
+        insights.append("🔄 Tu rendimiento es razonablemente estable")
+    else:
+        insights.append("⚠️ Hay bastante variabilidad en tu rendimiento, intenta mantener la regularidad")
+
+    # Best season insight
+    if not seasonal_performance.empty:
+        best_season = seasonal_performance["WinRate"].idxmax()
+        best_season_rate = seasonal_performance.loc[best_season, "WinRate"]
+        insights.append(f"🌞 Tu mejor estación es **{best_season}** con un win rate de {best_season_rate:.1f}%")
+
+    # Best time of day insight
+    if not time_analysis.empty:
+        best_time = time_analysis["WinRate"].idxmax()
+        best_time_rate = time_analysis.loc[best_time, "WinRate"]
+        insights.append(f"🕑 Tu mejor momento del día es **{best_time}** con un win rate de {best_time_rate:.1f}%")
     
     for insight in insights:
         st.write(f"• {insight}")
