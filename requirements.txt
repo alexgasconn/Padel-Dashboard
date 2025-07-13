@@ -2,4 +2,3 @@ streamlit
 pandas
 numpy
 altair
-python-version==3.11
