@@ -46,10 +46,10 @@ def calculate_advanced_win_probability(performance_df):
 
     # 1. Definir los pesos para cada factor. AJUSTA ESTOS VALORES SEGÚN TU PREFERENCIA.
     weights = {
-        "win_rate": 0.3,      # El más importante
+        "win_rate": 0.25,      # El más importante
         "rendiment": 0.10,     # Rendimiento personal
         "game_diff": 0.15,     # Qué tan abultada es la victoria/derrota
-        "quimica": 0.5,       # Sinergia con el compañero
+        "quimica": 0.05,       # Sinergia con el compañero
         "merit": 0.10,       # Aporte neto en el partido (Rating +/-)
         "num_partidos": 0.3,   # Factor de confianza
         "random": 0.05  # Un pequeño factor aleatorio para evitar que la probabilidad sea demasiado determinista
