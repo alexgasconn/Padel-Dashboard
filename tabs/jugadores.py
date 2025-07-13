@@ -32,20 +32,36 @@ def render(filtered_df, teammates_df):
     st.altair_chart(prob_chart, use_container_width=True)
     st.divider()
 
-    # --- Gráfico 2: Evolución Acumulada de Merit ---
+    # --- Gráfico 2: Evolución Acumulada de Merit con relleno de ceros ---
     st.markdown("#### Evolución del Aporte (Merit Acumulado)")
-    st.write("Muestra cómo ha evolucionado tu aporte neto (puntos +/-) jugando con tus 5 compañeros más frecuentes a lo largo del tiempo.")
+    st.write("Muestra cómo ha evolucionado tu aporte neto (Merit) con tus 5 compañeros más frecuentes. La línea se mantiene plana en los días sin partido.")
     
     if "Teammate" in filtered_df.columns and not filtered_df.empty:
         # Obtener los 5 compañeros con más partidos
         top_teammates = filtered_df['Teammate'].value_counts().nlargest(5).index
-        df_top_teammates = filtered_df[filtered_df['Teammate'].isin(top_teammates)].copy()
+        df_top = filtered_df[filtered_df['Teammate'].isin(top_teammates)].copy()
 
-        # Asegurar orden por fecha y calcular el Merit acumulado por cada partido
-        df_top_teammates = df_top_teammates.sort_values(by=['Teammate', 'Date'])
-        df_top_teammates['Merit_Cumsum'] = df_top_teammates.groupby('Teammate')['Merit'].cumsum()
+        # Asegurar que Date es datetime
+        df_top['Date'] = pd.to_datetime(df_top['Date'])
 
-        line_chart = alt.Chart(df_top_teammates).mark_line(point=True).encode(
+        # Crear un MultiIndex con todas las combinaciones de fechas y compañeros top
+        date_range = pd.date_range(start=df_top['Date'].min(), end=df_top['Date'].max(), freq='D')
+        multi_index = pd.MultiIndex.from_product([top_teammates, date_range], names=['Teammate', 'Date'])
+
+        # Preparar los datos de partidos jugados
+        df_played = df_top.groupby(['Teammate', 'Date'])['Merit'].sum().reset_index()
+
+        # Crear el DataFrame completo rellenando los días sin partido
+        df_full = df_played.set_index(['Teammate', 'Date']).reindex(multi_index, fill_value=0).reset_index()
+
+        # Calcular la suma acumulada sobre el DataFrame completo
+        df_full['Merit_Cumsum'] = df_full.groupby('Teammate')['Merit'].cumsum()
+        
+        # Filtrar para no mostrar el tooltip en los días con Merit = 0 (días no jugados)
+        df_full['Tooltip_Merit'] = df_full['Merit'].replace(0, np.nan)
+
+
+        line_chart = alt.Chart(df_full).mark_line().encode(
             x=alt.X('Date:T', title='Fecha'),
             y=alt.Y('Merit_Cumsum:Q', title='Merit Acumulado'),
             color=alt.Color('Teammate:N', title='Compañero'),
@@ -53,7 +69,7 @@ def render(filtered_df, teammates_df):
                 alt.Tooltip('Date:T', title='Fecha'),
                 alt.Tooltip('Teammate:N', title='Compañero'),
                 alt.Tooltip('Merit_Cumsum:Q', title='Merit Acumulado'),
-                alt.Tooltip('Merit:Q', title='Merit de este Partido')
+                alt.Tooltip('Tooltip_Merit:Q', title='Merit de este Partido (si se jugó)')
             ]
         ).properties(
             title="Evolución de Merit Acumulado con Compañeros Frecuentes"
@@ -71,7 +87,7 @@ def render(filtered_df, teammates_df):
             x=alt.X("Quimica:Q", title="Química", scale=alt.Scale(zero=False)),
             y=alt.Y("Rendiment:Q", title="Rendimiento", scale=alt.Scale(zero=False)),
             color=alt.Color("Result:N", scale=alt.Scale(domain=["W", "L", "N"], range=["#2ca02c", "#d62728", "grey"]), legend=alt.Legend(title="Resultado")),
-            size=alt.Size("Merit:Q", scale=alt.Scale(range=[50, 500]), title="Merit del Partido"), # Reactivado y ajustado
+            size=alt.Size("Merit:Q", scale=alt.Scale(range=[50, 500]), title="Merit del Partido"),
             tooltip=["Date", "Teammate", "Quimica", "Rendiment", "Merit", "Result"]
         ).properties(
             title="Química vs. Rendimiento"
