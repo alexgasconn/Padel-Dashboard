@@ -359,7 +359,7 @@ with tabs[3]:
     # Performance distribution
     performance_dist = alt.Chart(filtered).mark_boxplot().encode(
         x=alt.X("Result:N", title="Resultado"),
-        y=alt.Y("Rating:Q", title="Rating"),
+        y=alt.Y("Merit:Q", title="Rating"),
         color=alt.Color("Result:N", scale=alt.Scale(domain=["W", "L", "N"], range=["green", "red", "gray"]))
     ).properties(width=600, height=400, title="Distribución de Rating por Resultado")
     st.altair_chart(performance_dist, use_container_width=True)
@@ -529,7 +529,7 @@ with tabs[5]:
     
     st.subheader("Consistencia de Rendimiento")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Desv. Rating", f"{consistency_metrics['Rating']:.2f}", help="Menor valor = más consistente")
+    col1.metric("Desv. Rating", f"{consistency_metrics['Merit']:.2f}", help="Menor valor = más consistente")
     col2.metric("Desv. Química", f"{consistency_metrics['Quimica']:.2f}", help="Menor valor = más consistente")
     col3.metric("Desv. Rendimiento", f"{consistency_metrics['Rendiment']:.2f}", help="Menor valor = más consistente")
 
