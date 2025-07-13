@@ -10,21 +10,38 @@ def render(filtered_df):
         st.info("No hay datos para el análisis temporal con los filtros actuales.")
         return
 
-    # --- Gráfico 1: Evolución del Rating ---
-    st.markdown("#### Evolución de tu Nivel General")
-    st.write("Esta línea muestra tu **Rating Acumulado** a lo largo del tiempo, que representa tu progreso y nivel general.")
+    # --- Gráfico 1: Evolución del Rating (con Media Móvil) ---
+    st.markdown("#### Evolución de tu Nivel General (Suavizada)")
+    st.write("Esta línea muestra la **tendencia de tu Rating Acumulado** (media móvil de 5 partidos) para visualizar tu progreso a largo plazo de forma más clara.")
 
+    # Asegurarse de que el dataframe esté ordenado por fecha
     df_sorted = filtered_df.sort_values("Date").reset_index(drop=True)
+
+    # 1. Calcular el Rating Acumulado (Suma acumulada del Merit de cada partido)
     df_sorted['Rating_Acumulado'] = df_sorted['Merit'].cumsum()
 
-    rating_line = alt.Chart(df_sorted).mark_line(color='cornflowerblue', strokeWidth=3).encode(
+    # 2. APLICAR LA MEDIA MÓVIL (ROLLING MEAN) DE 5 PARTIDOS
+    df_sorted['Rating_Suavizado'] = df_sorted['Rating_Acumulado'].rolling(window=5, min_periods=1).mean()
+
+    # 3. Crear el gráfico usando la nueva columna 'Rating_Suavizado'
+    rating_line = alt.Chart(df_sorted).mark_line(
+        color='cornflowerblue', 
+        strokeWidth=3,
+        point=alt.OverlayMarkDef(color="red", size=20, opacity=0) # Puntos invisibles para el tooltip
+    ).encode(
         x=alt.X("Date:T", title="Fecha"),
-        y=alt.Y('Rating_Acumulado:Q', title='Rating Acumulado', scale=alt.Scale(zero=False)),
-        tooltip=[alt.Tooltip('Date:T', title='Fecha'), alt.Tooltip('Rating_Acumulado:Q', title='Rating Acumulado', format='.2f'), alt.Tooltip('Teammate:N', title='Compañero')]
+        y=alt.Y('Rating_Suavizado:Q', title='Rating Acumulado (Suavizado)', scale=alt.Scale(zero=False)),
+        tooltip=[
+            alt.Tooltip('Date:T', title='Fecha'),
+            alt.Tooltip('Rating_Suavizado:Q', title='Rating Suavizado', format='.2f'),
+            alt.Tooltip('Rating_Acumulado:Q', title='Rating Real (ese día)', format='.2f'),
+            alt.Tooltip('Teammate:N', title='Compañero'),
+            alt.Tooltip('Result:N', title='Resultado'),
+        ]
     ).properties(
-        title="Evolución del Rating Acumulado"
+        title="Evolución del Rating Acumulado (Media Móvil de 5 Partidos)"
     ).interactive()
-    
+        
     st.altair_chart(rating_line, use_container_width=True)
     st.divider()
 
