@@ -522,6 +522,7 @@ with tabs[5]:
     
     # Performance consistency
     consistency_metrics = filtered.groupby("Date").agg({
+        "Merit": "mean",
         "Rating": "mean",
         "Quimica": "mean", 
         "Rendiment": "mean"
