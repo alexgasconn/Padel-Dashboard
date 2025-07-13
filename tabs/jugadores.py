@@ -38,14 +38,23 @@ def render(filtered_df, teammates_df):
 
     # Cálculo de win rate real (Victorias / Total_Partidos)
     teammates_df = teammates_df.copy()
-    teammates_df["WinRate"] = (teammates_df["Victorias"] / teammates_df["Total_Partidos"] * 100).round(2)
+    teammates_df["WinRate"] = (
+        teammates_df["Victorias"] / teammates_df["Total_Partidos"] * 100).round(2)
 
     # Top compañeros por win rate (mínimo 5 partidos)
     min_partidos = 5
     top_winrate = teammates_df[teammates_df["Total_Partidos"] >= min_partidos].sort_values(
         "WinRate", ascending=False).head(10)
-    st.markdown(f"#### Mejores compañeros por win rate (mínimo {min_partidos} partidos)")
-    st.dataframe(top_winrate[["Compañero", "WinRate", "Total_Partidos", "Victorias", "Derrotas"]])
+    st.markdown(
+        f"#### Mejores compañeros por win rate (mínimo {min_partidos} partidos)")
+    cols = ["Compañero", "WinRate", "Total_Partidos", "Victorias", "Derrotas"]
+    cols_presentes = [c for c in cols if c in top_winrate.columns]
+    if not cols_presentes:
+        st.warning(
+            f"No se encontraron columnas esperadas en el DataFrame: {top_winrate.columns.tolist()}")
+    else:
+        st.dataframe(top_winrate[cols_presentes])
+    st.write("Columnas en top_winrate:", top_winrate.columns.tolist())
 
     # Rachas de victorias/derrotas por compañero (si hay fechas)
     if "Fecha" in filtered_df.columns and "Teammate" in filtered_df.columns:
@@ -61,8 +70,10 @@ def render(filtered_df, teammates_df):
                     max_win_streak = max(max_win_streak, curr)
                 else:
                     curr = 0
-            streaks.append({"Compañero": teammate, "Mejor_Racha_Victorias": max_win_streak})
-        streaks_df = pd.DataFrame(streaks).sort_values("Mejor_Racha_Victorias", ascending=False).head(10)
+            streaks.append(
+                {"Compañero": teammate, "Mejor_Racha_Victorias": max_win_streak})
+        streaks_df = pd.DataFrame(streaks).sort_values(
+            "Mejor_Racha_Victorias", ascending=False).head(10)
         st.dataframe(streaks_df)
 
     # Boxplot/Violinplot de win rate por compañero (solo si hay suficientes datos)
