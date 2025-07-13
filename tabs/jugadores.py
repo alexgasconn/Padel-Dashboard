@@ -32,6 +32,7 @@ def render(filtered_df, teammates_df):
 
     st.markdown("### Estadísticas de Compañeros")
 
+    st.markdown(teammates_df.head(3))
     # Top compañeros por número de partidos
     top_partidos = teammates_df.sort_values("Total_Partidos", ascending=False).head(10)
     st.markdown("#### Compañeros con más partidos jugados")
