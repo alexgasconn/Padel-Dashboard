@@ -71,13 +71,13 @@ def create_performance_df(df, group_col, entity_name):
     """Create performance DataFrame for any grouping"""
     performance = df.groupby(group_col).agg({
         'Result': ['count', lambda x: (x == 'W').sum(), lambda x: (x == 'L').sum(), lambda x: (x == 'N').sum()],
-        'Rating': 'mean',
+        'Merit': 'mean',
         'Quimica': 'mean',
         'Rendiment': 'mean',
         'Game-Diff': 'mean'
     }).round(2)
     
-    performance.columns = ['Total_Partidos', 'Victorias', 'Derrotas', 'Empates', 'Rating_Avg', 'Quimica_Avg', 'Rendiment_Avg', 'GameDiff_Avg']
+    performance.columns = ['Total_Partidos', 'Victorias', 'Derrotas', 'Empates', 'Merit_Avg', 'Quimica_Avg', 'Rendiment_Avg', 'GameDiff_Avg']
     
     # Calculate percentages
     performance['Win_Rate_Total'] = (performance['Victorias'] / performance['Total_Partidos'] * 100).round(1)
@@ -116,7 +116,7 @@ with st.sidebar:
                 st.rerun()
         return selected
     
-    with st.expander("Opciones de filtrado", expanded=True):
+    with st.expander("Opciones de filtrado", expanded=false):
         year = create_multiselect_with_all("Año", sorted(df["Year"].dropna().unique()), "year_filter")
         month = create_multiselect_with_all("Mes", sorted(df["Month"].dropna().unique()), "month_filter")
         weekday = create_multiselect_with_all("Día de la semana", sorted(df["Weekday"].dropna().unique()), "weekday_filter")
@@ -156,7 +156,7 @@ if "Opponent" in df.columns and opponent:
 
 # --- METRICS ---
 st.subheader("📊 Resumen Global")
-col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns(8)
 
 total_games = len(filtered)
 wins = (filtered['Result'] == 'W').sum()
@@ -170,9 +170,10 @@ col2.metric("Victorias", wins, help="Partidos ganados")
 col3.metric("Derrotas", losses, help="Partidos perdidos")
 col4.metric("% Victorias", f"{win_rate:.1f}%", help="Porcentaje de partidos ganados")
 col5.metric("% Victorias (sin empates)", f"{win_rate_no_draws:.1f}%", help="Porcentaje de victorias sin contar empates")
-col6.metric("Rating medio", f"{filtered['Rating'].mean():.2f}", help="Promedio de tu rating personal")
+col6.metric("Merit Promedio", f"{filtered['Merit_Avg'].mean():.2f}", help="Promedio de tu merit personal")
 col7.metric("Química media", f"{filtered['Quimica'].mean():.2f}", help="Promedio de química con compañeros")
 col8.metric("Rendimiento medio", f"{filtered['Rendiment'].mean():.2f}", help="Promedio de tu rendimiento")
+col9.metric("Diferencia de Juegos media", f"{filtered['Game-Diff'].mean():.2f}", help="Promedio de diferencia de juegos ganados")
 
 # --- PERFORMANCE DATAFRAMES ---
 st.subheader("🎯 Análisis de Rendimiento Detallado")
@@ -192,74 +193,10 @@ hours_df = create_performance_df(filtered_copy, 'Hour_Category', 'Hora')
 if "Opponent" in df.columns:
     opponents_df = create_performance_df(filtered, 'Opponent', 'Rival')
 
-# Display performance tables
-tab_perf1, tab_perf2, tab_perf3, tab_perf4 = st.tabs(["👥 Compañeros", "📍 Lugares", "🕒 Horas", "⚔️ Rivales"])
 
-with tab_perf1:
-    st.subheader("Rendimiento por Compañero")
-    st.dataframe(
-        teammates_df.style.format({
-            'Win_Rate_Total': '{:.1f}%',
-            'Win_Rate_Sin_Empates': '{:.1f}%',
-            'Probabilidad_Victoria': '{:.1f}%',
-            'Rating_Avg': '{:.2f}',
-            'Quimica_Avg': '{:.2f}',
-            'Rendiment_Avg': '{:.2f}',
-            'GameDiff_Avg': '{:.2f}'
-        }),
-        use_container_width=True
-    )
-
-with tab_perf2:
-    st.subheader("Rendimiento por Lugar")
-    st.dataframe(
-        locations_df.style.format({
-            'Win_Rate_Total': '{:.1f}%',
-            'Win_Rate_Sin_Empates': '{:.1f}%',
-            'Probabilidad_Victoria': '{:.1f}%',
-            'Rating_Avg': '{:.2f}',
-            'Quimica_Avg': '{:.2f}',
-            'Rendiment_Avg': '{:.2f}',
-            'GameDiff_Avg': '{:.2f}'
-        }),
-        use_container_width=True
-    )
-
-with tab_perf3:
-    st.subheader("Rendimiento por Hora")
-    st.dataframe(
-        hours_df.style.format({
-            'Win_Rate_Total': '{:.1f}%',
-            'Win_Rate_Sin_Empates': '{:.1f}%',
-            'Probabilidad_Victoria': '{:.1f}%',
-            'Rating_Avg': '{:.2f}',
-            'Quimica_Avg': '{:.2f}',
-            'Rendiment_Avg': '{:.2f}',
-            'GameDiff_Avg': '{:.2f}'
-        }),
-        use_container_width=True
-    )
-
-with tab_perf4:
-    if "Opponent" in df.columns:
-        st.subheader("Rendimiento por Rival")
-        st.dataframe(
-            opponents_df.style.format({
-                'Win_Rate_Total': '{:.1f}%',
-                'Win_Rate_Sin_Empates': '{:.1f}%',
-                'Probabilidad_Victoria': '{:.1f}%',
-                'Rating_Avg': '{:.2f}',
-                'Quimica_Avg': '{:.2f}',
-                'Rendiment_Avg': '{:.2f}',
-                'GameDiff_Avg': '{:.2f}'
-            }),
-            use_container_width=True
-        )
-    else:
-        st.info("No hay datos de rivales disponibles en el dataset")
 
 # --- TABS ---
-tabs = st.tabs(["🎾 Jugadores", "📍 Lugares", "🕒 Temporal", "📊 Gráficos", "📋 Datos", "🔍 Estadísticas Avanzadas", "🎯 Nuevos Análisis"])
+tabs = st.tabs(["🎾 Jugadores", "📍 Lugares", "🕒 Temporal", "📊 Gráficos", "📋 Datos", "🔍 Estadísticas Avanzadas", "🎯 Nuevos Análisis", "Dataframes"])
 
 # --- TAB 1: Jugadores ---
 with tabs[0]:
@@ -274,7 +211,7 @@ with tabs[0]:
             WinRate=("Result", lambda x: (x == "W").mean() * 100),
             Quimica=("Quimica", "mean"),
             Rendiment=("Rendiment", "mean"),
-            Rating=("Rating", "mean"),
+            Rating=("Merit", "mean"),
             GameDiff=("Game-Diff", "mean")
         )
         .sort_values("WinRate", ascending=False)
@@ -310,7 +247,7 @@ with tabs[1]:
             Partidos=("Result", "count"),
             Victorias=("Result", lambda x: (x == "W").sum()),
             WinRate=("Result", lambda x: (x == "W").mean() * 100),
-            Rating=("Rating", "mean"),
+            Rating=("Merit", "mean"),
             Quimica=("Quimica", "mean"),
             Rendiment=("Rendiment", "mean")
         )
@@ -328,11 +265,11 @@ with tabs[1]:
     
     # Performance metrics by location
     location_metrics = alt.Chart(locations_df).mark_point(size=100).encode(
-        x=alt.X("Rating_Avg", title="Rating Promedio"),
+        x=alt.X("Merit_Avg", title="Rating Promedio"),
         y=alt.Y("Rendiment_Avg", title="Rendimiento Promedio"),
         color=alt.Color("Probabilidad_Victoria", scale=alt.Scale(scheme="redyellowgreen")),
         size=alt.Size("Total_Partidos", scale=alt.Scale(range=[100, 500])),
-        tooltip=["Lugar", "Rating_Avg", "Rendiment_Avg", "Probabilidad_Victoria", "Total_Partidos"]
+        tooltip=["Lugar", "Merit_Avg", "Rendiment_Avg", "Probabilidad_Victoria", "Total_Partidos"]
     ).properties(width=800, height=400, title="Métricas de Rendimiento por Lugar")
     st.altair_chart(location_metrics, use_container_width=True)
 
@@ -796,6 +733,75 @@ with tabs[6]:
     
     for insight in insights:
         st.write(f"• {insight}")
+
+    with tabs[7]:
+        st.subheader("Dataframes de Rendimiento")
+        
+        ## Display performance tables
+        tab_perf1, tab_perf2, tab_perf3, tab_perf4 = st.tabs(["👥 Compañeros", "📍 Lugares", "🕒 Horas", "⚔️ Rivales"])
+
+        with tab_perf1:
+            st.subheader("Rendimiento por Compañero")
+            st.dataframe(
+                teammates_df.style.format({
+                    'Win_Rate_Total': '{:.1f}%',
+                    'Win_Rate_Sin_Empates': '{:.1f}%',
+                    'Probabilidad_Victoria': '{:.1f}%',
+                    'Merit_Avg': '{:.2f}',
+                    'Quimica_Avg': '{:.2f}',
+                    'Rendiment_Avg': '{:.2f}',
+                    'GameDiff_Avg': '{:.2f}'
+                }),
+                use_container_width=True
+            )
+
+        with tab_perf2:
+            st.subheader("Rendimiento por Lugar")
+            st.dataframe(
+                locations_df.style.format({
+                    'Win_Rate_Total': '{:.1f}%',
+                    'Win_Rate_Sin_Empates': '{:.1f}%',
+                    'Probabilidad_Victoria': '{:.1f}%',
+                    'Merit_Avg': '{:.2f}',
+                    'Quimica_Avg': '{:.2f}',
+                    'Rendiment_Avg': '{:.2f}',
+                    'GameDiff_Avg': '{:.2f}'
+                }),
+                use_container_width=True
+            )
+
+        with tab_perf3:
+            st.subheader("Rendimiento por Hora")
+            st.dataframe(
+                hours_df.style.format({
+                    'Win_Rate_Total': '{:.1f}%',
+                    'Win_Rate_Sin_Empates': '{:.1f}%',
+                    'Probabilidad_Victoria': '{:.1f}%',
+                    'Merit_Avg': '{:.2f}',
+                    'Quimica_Avg': '{:.2f}',
+                    'Rendiment_Avg': '{:.2f}',
+                    'GameDiff_Avg': '{:.2f}'
+                }),
+                use_container_width=True
+            )
+
+        with tab_perf4:
+            if "Opponent" in df.columns:
+                st.subheader("Rendimiento por Rival")
+                st.dataframe(
+                    opponents_df.style.format({
+                        'Win_Rate_Total': '{:.1f}%',
+                        'Win_Rate_Sin_Empates': '{:.1f}%',
+                        'Probabilidad_Victoria': '{:.1f}%',
+                        'Merit_Avg': '{:.2f}',
+                        'Quimica_Avg': '{:.2f}',
+                        'Rendiment_Avg': '{:.2f}',
+                        'GameDiff_Avg': '{:.2f}'
+                    }),
+                    use_container_width=True
+                )
+            else:
+                st.info("No hay datos de rivales disponibles en el dataset")
 
 # --- FOOTER ---
 st.markdown("---")
