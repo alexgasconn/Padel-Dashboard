@@ -46,12 +46,13 @@ def calculate_advanced_win_probability(performance_df):
 
     # 1. Definir los pesos para cada factor. AJUSTA ESTOS VALORES SEGÚN TU PREFERENCIA.
     weights = {
-        "win_rate": 0.30,      # El más importante
-        "rendiment": 0.15,     # Rendimiento personal
-        "game_diff": 0.10,     # Qué tan abultada es la victoria/derrota
+        "win_rate": 0.3,      # El más importante
+        "rendiment": 0.10,     # Rendimiento personal
+        "game_diff": 0.15,     # Qué tan abultada es la victoria/derrota
         "quimica": 0.5,       # Sinergia con el compañero
-        "merit": 0.10,         # Aporte neto en el partido (Rating +/-)
-        "num_partidos": 0.25   # Factor de confianza
+        "merit": 0.10,       # Aporte neto en el partido (Rating +/-)
+        "num_partidos": 0.3,   # Factor de confianza
+        "random": 0.05  # Un pequeño factor aleatorio para evitar que la probabilidad sea demasiado determinista
     }
 
     # 2. Escalar cada columna de 0 a 1 para que sean comparables
@@ -77,12 +78,13 @@ def calculate_advanced_win_probability(performance_df):
         scaled['quimica'] * weights['quimica'] +
         scaled['merit'] * weights['merit'] +
         scaled['num_partidos'] * weights['num_partidos']
+        + np.random.uniform(0, 0.05, size=scaled.shape[0]) * weights['random'] 
     )
 
     # 4. Normalizar el score final para que esté entre un rango razonable (ej. 30% a 95%)
     # Esto hace que las probabilidades sean más intuitivas que un simple 0-100.
-    min_prob = 30
-    max_prob = 95
+    min_prob = 0
+    max_prob = 100
     final_prob = min_prob + (final_score * (max_prob - min_prob))
 
     return final_prob.round(1)
