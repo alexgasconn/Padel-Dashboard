@@ -156,7 +156,7 @@ if "Opponent" in df.columns and opponent:
 
 # --- METRICS ---
 st.subheader("📊 Resumen Global")
-col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns(8)
+col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns(9)
 
 total_games = len(filtered)
 wins = (filtered['Result'] == 'W').sum()
