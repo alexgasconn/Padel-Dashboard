@@ -24,7 +24,7 @@ def render(filtered_df, locations_df):
     st.altair_chart(location_prob_chart, use_container_width=True)
     st.divider()
 
-    # --- Gráfico 2: Métricas de Rendimiento por Lugar ---
+    # --- Gráfico 2: Cluster de Rendimiento ---
     st.markdown("#### Cluster de Rendimiento")
     st.write("Compara el Merit y Rendimiento promedio en cada lugar. El tamaño del punto indica el número de partidos jugados.")
 
@@ -44,20 +44,15 @@ def render(filtered_df, locations_df):
     st.markdown("#### Evolución del Aporte (Merit Acumulado) por Lugar")
     st.write("Muestra cómo ha evolucionado tu aporte neto (Merit) en tus 5 canchas más frecuentes a lo largo del tiempo.")
     
-    # Comprobación de que 'Lugar' existe y el dataframe no está vacío
     if "Lugar" in filtered_df.columns and not filtered_df.empty:
-        # Obtener los 5 lugares con más partidos
-        top_places = filtered_df['Lugar'].value_counts().nlargest(5).index
-        df_top = filtered_df[filtered_df['Lugar'].isin(top_places)].copy()
+        top_places_evo = filtered_df['Lugar'].value_counts().nlargest(5).index
+        df_top_evo = filtered_df[filtered_df['Lugar'].isin(top_places_evo)].copy()
 
-        # Proceder solo si df_top tiene datos después de filtrar
-        if not df_top.empty:
-            df_top['Date'] = pd.to_datetime(df_top['Date'])
-
-            date_range = pd.date_range(start=df_top['Date'].min(), end=df_top['Date'].max(), freq='D')
-            multi_index = pd.MultiIndex.from_product([top_places, date_range], names=['Lugar', 'Date'])
-
-            df_played = df_top.groupby(['Lugar', 'Date'])['Merit'].sum().reset_index()
+        if not df_top_evo.empty:
+            df_top_evo['Date'] = pd.to_datetime(df_top_evo['Date'])
+            date_range = pd.date_range(start=df_top_evo['Date'].min(), end=df_top_evo['Date'].max(), freq='D')
+            multi_index = pd.MultiIndex.from_product([top_places_evo, date_range], names=['Lugar', 'Date'])
+            df_played = df_top_evo.groupby(['Lugar', 'Date'])['Merit'].sum().reset_index()
             df_full = df_played.set_index(['Lugar', 'Date']).reindex(multi_index, fill_value=0).reset_index()
             df_full['Merit_Cumsum'] = df_full.groupby('Lugar')['Merit'].cumsum()
             df_full['Tooltip_Merit'] = df_full['Merit'].replace(0, np.nan)
@@ -65,17 +60,49 @@ def render(filtered_df, locations_df):
             line_chart = alt.Chart(df_full).mark_line().encode(
                 x=alt.X('Date:T', title='Fecha'),
                 y=alt.Y('Merit_Cumsum:Q', title='Merit Acumulado'),
-                # CORREGIDO: Título de la leyenda y campo del tooltip
                 color=alt.Color('Lugar:N', title='Lugar'),
-                tooltip=[
-                    alt.Tooltip('Date:T', title='Fecha'),
-                    alt.Tooltip('Lugar:N', title='Lugar'),
-                    alt.Tooltip('Merit_Cumsum:Q', title='Merit Acumulado'),
-                    alt.Tooltip('Tooltip_Merit:Q', title='Merit de este Partido (si se jugó)')
-                ]
-            ).properties(
-                # CORREGIDO: Título del gráfico
-                title="Evolución de Merit Acumulado en Lugares Frecuentes"
-            ).interactive()
-            
+                tooltip=[alt.Tooltip('Date:T', title='Fecha'), alt.Tooltip('Lugar:N', title='Lugar'), alt.Tooltip('Merit_Cumsum:Q', title='Merit Acumulado'), alt.Tooltip('Tooltip_Merit:Q', title='Merit de este Partido (si se jugó)')]
+            ).properties(title="Evolución de Merit Acumulado en Lugares Frecuentes").interactive()
             st.altair_chart(line_chart, use_container_width=True)
+    st.divider()
+    
+    # --- NUEVA SECCIÓN: Racha de los últimos 5 partidos ---
+    st.markdown("#### Estado de Forma en Lugares Frecuentes")
+    st.write("Racha de resultados en los últimos 5 partidos jugados en tus canchas más habituales.")
+
+    if "Lugar" in filtered_df.columns and not filtered_df.empty:
+        top_places_streak = filtered_df['Lugar'].value_counts().nlargest(5).index
+
+        if len(top_places_streak) > 0:
+            # Usar st.columns para un layout más limpio, hasta 5 columnas
+            cols = st.columns(len(top_places_streak))
+            
+            for i, place in enumerate(top_places_streak):
+                with cols[i]:
+                    st.markdown(f"**{place}**")
+                    # Filtrar partidos para ese lugar y ordenar por fecha para obtener los últimos
+                    place_games = filtered_df[filtered_df['Lugar'] == place].sort_values('Date', ascending=False).head(5)
+                    
+                    if not place_games.empty:
+                        # Crear el string de la racha con iconos
+                        streak_icons = {
+                            'W': '✅',
+                            'L': '❌',
+                            'N': '➖'
+                        }
+                        # Invertir el orden para mostrar del más antiguo al más reciente
+                        streak_str = " ".join([streak_icons.get(res, '❓') for res in place_games['Result'][::-1]])
+                        
+                        # Contar victorias en la racha
+                        wins_in_streak = (place_games['Result'] == 'W').sum()
+                        
+                        st.metric(
+                            label=f"Últimos {len(place_games)} Partidos",
+                            value=streak_str,
+                            delta=f"{wins_in_streak} Victorias",
+                            delta_color="normal"
+                        )
+                    else:
+                        st.write("No hay partidos recientes.")
+        else:
+            st.info("No hay lugares con suficientes partidos para mostrar una racha.")
