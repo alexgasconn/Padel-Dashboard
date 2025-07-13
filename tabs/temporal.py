@@ -29,11 +29,11 @@ def render(filtered_df):
     st.divider()
 
     # --- Gráfico 2: Heatmap por Momento del Día ---
-    st.markdown("#### ¿Cuándo Juegas Mejor? Rendimiento por Momento del Día")
+    st.markdown("#### ¿Cuándo Juegas Más? Frecuencia por Momento del Día")
+    st.write("El color de cada celda indica el **número de partidos jugados**. Pasa el ratón para ver el % de victorias y otras estadísticas.")
     
     temp_df_daily = filtered_df.copy()
     
-    # Función para categorizar la hora
     def get_time_of_day(hour_obj):
         if pd.isna(hour_obj): return "No especificado"
         h = hour_obj.hour
@@ -46,50 +46,35 @@ def render(filtered_df):
     time_order = ["Mañana (5-11)", "Mediodía (12-16)", "Tarde (17-20)", "Noche (21-4)", "No especificado"]
     
     heatmap_data_daily = temp_df_daily.groupby(["Weekday", "TimeOfDay"]).agg(
+        Partidos=("Result", "count"),
         WinRate=("Result", lambda x: (x == 'W').mean() * 100),
-        Merit_Avg=("Merit", "mean"),
-        Partidos=("Result", "count")
+        Merit_Avg=("Merit", "mean")
     ).reset_index()
     
     weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
-    metric_to_show_daily = st.selectbox(
-        "Elige la métrica para el heatmap diario:",
-        ["WinRate", "Merit_Avg", "Partidos"],
-        format_func=lambda x: {"WinRate": "% Victorias", "Merit_Avg": "Merit Promedio", "Partidos": "Nº Partidos"}[x],
-        key="daily_heatmap_metric"
-    )
-
-    color_scale_daily = {
-        "WinRate": alt.Scale(scheme="redyellowgreen", domain=[0, 100]),
-        "Merit_Avg": alt.Scale(scheme="redblue"),
-        "Partidos": alt.Scale(scheme="viridis")
-    }[metric_to_show_daily]
-    
-    color_title_daily = {"WinRate": "% Victorias", "Merit_Avg": "Merit Promedio", "Partidos": "Nº Partidos"}[metric_to_show_daily]
-
     heatmap_daily = alt.Chart(heatmap_data_daily).mark_rect().encode(
         x=alt.X("TimeOfDay:N", title="Momento del Día", sort=time_order),
         y=alt.Y("Weekday:N", title="Día de la semana", sort=weekday_order),
-        color=alt.Color(f"{metric_to_show_daily}:Q", title=color_title_daily, scale=color_scale_daily),
+        color=alt.Color("Partidos:Q", title="Nº de Partidos", scale=alt.Scale(scheme="viridis")),
         tooltip=[
             alt.Tooltip("Weekday:N", title="Día"), 
             alt.Tooltip("TimeOfDay:N", title="Momento del Día"), 
+            alt.Tooltip("Partidos:Q", title="Nº Partidos"),
             alt.Tooltip("WinRate:Q", title="% Victorias", format=".1f"), 
-            alt.Tooltip("Merit_Avg:Q", title="Merit Promedio", format=".2f"), 
-            alt.Tooltip("Partidos:Q", title="Nº Partidos")
+            alt.Tooltip("Merit_Avg:Q", title="Merit Promedio", format=".2f")
         ]
-    ).properties(title=f"Heatmap de {color_title_daily} por Momento del Día")
+    ).properties(title="Heatmap de Frecuencia de Partidos por Momento del Día")
     
     st.altair_chart(heatmap_daily, use_container_width=True)
     st.divider()
 
     # --- Gráfico 3: Heatmap por Estación y Año ---
-    st.markdown("#### Frecuencia y Rendimiento Estacional")
+    st.markdown("#### Frecuencia de Juego Estacional")
+    st.write("El color de cada celda indica el **número de partidos jugados** en cada estación. Pasa el ratón para ver el % de victorias.")
     
     temp_df_seasonal = filtered_df.copy()
 
-    # Función para categorizar el mes en estaciones
     def get_season(month_name):
         if month_name in ["December", "January", "February"]: return "Invierno"
         if month_name in ["March", "April", "May"]: return "Primavera"
@@ -98,30 +83,17 @@ def render(filtered_df):
         return "Desconocido"
         
     temp_df_seasonal['Season'] = temp_df_seasonal['Month'].apply(get_season)
-    season_order = ["Invierno", "Primavera", "Verano", "Otoño"]
+    season_order = ["Primavera", "Verano", "Otoño", "Invierno"] # Orden cronológico-visual
 
     seasonal_data = temp_df_seasonal.groupby(["Year", "Season"]).agg(
         Partidos=("Result", "count"),
         WinRate=("Result", lambda x: (x == 'W').mean() * 100)
     ).reset_index()
 
-    metric_to_show_seasonal = st.selectbox(
-        "Elige la métrica para el heatmap estacional:",
-        ["Partidos", "WinRate"],
-        format_func=lambda x: "Nº de Partidos" if x == "Partidos" else "% de Victorias",
-        key="seasonal_heatmap_metric"
-    )
-    
-    color_scale_seasonal = (
-        alt.Scale(scheme="viridis") if metric_to_show_seasonal == "Partidos" 
-        else alt.Scale(scheme="redyellowgreen", domain=[0, 100])
-    )
-    color_title_seasonal = "Nº de Partidos" if metric_to_show_seasonal == "Partidos" else "% de Victorias"
-
     heatmap_seasonal = alt.Chart(seasonal_data).mark_rect().encode(
         x=alt.X('Season:N', title='Estación del Año', sort=season_order),
         y=alt.Y('Year:O', title='Año', axis=alt.Axis(labelAngle=0)),
-        color=alt.Color(f'{metric_to_show_seasonal}:Q', title=color_title_seasonal, scale=color_scale_seasonal),
+        color=alt.Color('Partidos:Q', title='Nº de Partidos', scale=alt.Scale(scheme="viridis")),
         tooltip=[
             alt.Tooltip('Year:O', title='Año'),
             alt.Tooltip('Season:N', title='Estación'),
@@ -129,7 +101,7 @@ def render(filtered_df):
             alt.Tooltip('WinRate:Q', title='% Victorias', format='.1f')
         ]
     ).properties(
-        title=f"Heatmap de {color_title_seasonal} por Estación y Año"
+        title="Heatmap de Frecuencia de Partidos por Estación y Año"
     )
 
     st.altair_chart(heatmap_seasonal, use_container_width=True)
