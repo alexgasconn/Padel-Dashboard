@@ -704,7 +704,7 @@ with tabs[6]:
         
         st.write("**Diferencia promedio entre victorias y derrotas:**")
         diff_col1, diff_col2, diff_col3, diff_col4 = st.columns(4)
-        diff_col1.metric("Rating", f"+{success_diff['Rating']:.2f}")
+        diff_col1.metric("Rating", f"+{success_diff['Merit']:.2f}")
         diff_col2.metric("Química", f"+{success_diff['Quimica']:.2f}")
         diff_col3.metric("Rendimiento", f"+{success_diff['Rendiment']:.2f}")
         diff_col4.metric("Dif. Juegos", f"+{success_diff['Game-Diff']:.2f}")
