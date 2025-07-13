@@ -7,7 +7,7 @@ import io
 import base64
 
 # --- CONFIG ---
-st.set_page_config(page_title="Dashboard Pádel Avanzado", layout="wide", page_icon="🎾")
+st.set_page_config(page_title="Dashboard Padel Avanzado", layout="wide", page_icon="🎾")
 st.markdown(
     """
     <style>
