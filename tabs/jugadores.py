@@ -95,36 +95,39 @@ def render(filtered_df, teammates_df):
         st.altair_chart(scatter, use_container_width=True)
     
 
-    # --- NUEVA SECCIÓN: Racha de los últimos 5 partidos con compañeros frecuentes ---
+    # --- NUEVA SECCIÓN: Racha de los últimos 6 partidos con compañeros frecuentes ---
     st.markdown("#### 🧩 Estado de Forma con tus Compañeros Frecuentes")
-    st.write("Racha de resultados en los últimos 5 partidos con los compañeros con los que más has jugado.")
+    st.write("Racha de resultados en los últimos 6 partidos con los compañeros con los que más has jugado.")
 
     if "Teammate" in filtered_df.columns and not filtered_df.empty:
-        top_teammates_streak = filtered_df['Teammate'].value_counts().nlargest(5).index
+        top_teammates_streak = filtered_df['Teammate'].value_counts().nlargest(6).index.tolist()
 
         if len(top_teammates_streak) > 0:
-            cols = st.columns(len(top_teammates_streak))
+            rows = [top_teammates_streak[:3], top_teammates_streak[3:]]
+            
+            for row in rows:
+                cols = st.columns(3)
+                for i, teammate in enumerate(row):
+                    with cols[i]:
+                        st.markdown(f"**{teammate}**")
 
-            for i, teammate in enumerate(top_teammates_streak):
-                with cols[i]:
-                    st.markdown(f"**{teammate}**")
+                        teammate_games = filtered_df[filtered_df['Teammate'] == teammate].sort_values('Date', ascending=False).head(6)
 
-                    teammate_games = filtered_df[filtered_df['Teammate'] == teammate].sort_values('Date', ascending=False).head(5)
+                        if not teammate_games.empty:
+                            streak_icons = {'W': '✅', 'L': '❌', 'N': '➖'}
+                            streak_str = " ".join([streak_icons.get(res, '❓') for res in teammate_games['Result'][::-1]])
+                            wins_in_streak = (teammate_games['Result'] == 'W').sum()
 
-                    if not teammate_games.empty:
-                        streak_icons = {'W': '✅', 'L': '❌', 'N': '➖'}
-                        streak_str = " ".join([streak_icons.get(res, '❓') for res in teammate_games['Result'][::-1]])
-                        wins_in_streak = (teammate_games['Result'] == 'W').sum()
-
-                        st.metric(
-                            label=f"Últimos {len(teammate_games)} Partidos",
-                            value=streak_str,
-                            delta=f"{wins_in_streak} Victorias",
-                            delta_color="normal"
-                        )
-                    else:
-                        st.write("No hay partidos recientes.")
+                            st.metric(
+                                label=f"Últimos {len(teammate_games)} Partidos",
+                                value=streak_str,
+                                delta=f"{wins_in_streak} Victorias",
+                                delta_color="normal"
+                            )
+                        else:
+                            st.write("No hay partidos recientes.")
         else:
             st.info("No hay compañeros con suficientes partidos para mostrar una racha.")
     else:
         st.info("No hay datos disponibles para mostrar esta sección.")
+
