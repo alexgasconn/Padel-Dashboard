@@ -76,9 +76,8 @@ def render(filtered_df, locations_df):
     # --- NUEVA SECCIÓN: Racha de los últimos 6 partidos ---
     st.markdown("#### 🏟️ Estado de Forma en Lugares Frecuentes")
     st.write("Racha de resultados en los últimos 6 partidos jugados en tus canchas más habituales.")
-
+    st.dataframe(filtered_df)
     if "Lugar" in filtered_df.columns and not filtered_df.empty:
-        st.dataframe(filtered_df)
         top_places_streak = filtered_df['Lugar'].value_counts().nlargest(6).index.tolist()
 
         if len(top_places_streak) > 0:
