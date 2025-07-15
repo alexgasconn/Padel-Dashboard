@@ -122,3 +122,40 @@ def render(filtered_df):
     )
 
     st.altair_chart(heatmap_seasonal, use_container_width=True)
+
+
+
+    # --- Gráfico 4: Evolución de Victorias y Derrotas Acumuladas ---
+    st.markdown("#### 📊 Evolución de Victorias vs Derrotas")
+    st.write("Visualiza cómo se ha ido acumulando tu número de victorias y derrotas a lo largo del tiempo. La separación entre ambas curvas refleja tu rendimiento global.")
+
+    df_result = filtered_df.copy().sort_values("Date").reset_index(drop=True)
+    df_result['Win'] = (df_result['Result'] == 'W').astype(int)
+    df_result['Loss'] = (df_result['Result'] == 'L').astype(int)
+    
+    df_result['Wins_Acum'] = df_result['Win'].cumsum()
+    df_result['Losses_Acum'] = df_result['Loss'].cumsum()
+
+    chart_base = alt.Chart(df_result).encode(x=alt.X("Date:T", title="Fecha"))
+
+    win_line = chart_base.mark_line(color="green", strokeWidth=3).encode(
+        y=alt.Y("Wins_Acum:Q", title="Total Acumulado"),
+        tooltip=[
+            alt.Tooltip("Date:T", title="Fecha"),
+            alt.Tooltip("Wins_Acum:Q", title="Victorias acumuladas")
+        ]
+    )
+
+    loss_line = chart_base.mark_line(color="red", strokeDash=[4, 4], strokeWidth=2).encode(
+        y="Losses_Acum:Q",
+        tooltip=[
+            alt.Tooltip("Date:T", title="Fecha"),
+            alt.Tooltip("Losses_Acum:Q", title="Derrotas acumuladas")
+        ]
+    )
+
+    result_chart = (win_line + loss_line).properties(
+        title="Evolución Acumulada de Victorias y Derrotas"
+    ).interactive()
+
+    st.altair_chart(result_chart, use_container_width=True)
