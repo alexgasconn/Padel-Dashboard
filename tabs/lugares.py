@@ -77,8 +77,8 @@ def render(filtered_df, locations_df):
     st.markdown("#### 🏟️ Estado de Forma en Lugares Frecuentes")
     st.write("Racha de resultados en los últimos 6 partidos jugados en tus canchas más habituales.")
     st.dataframe(filtered_df)
-    if "Lugar" in filtered_df.columns and not filtered_df.empty:
-        top_places_streak = filtered_df['Lugar'].value_counts().nlargest(6).index.tolist()
+    if "Location" in filtered_df.columns and not filtered_df.empty:
+        top_places_streak = filtered_df['Location'].value_counts().nlargest(6).index.tolist()
 
         if len(top_places_streak) > 0:
             rows = [top_places_streak[:3], top_places_streak[3:]]
@@ -89,7 +89,7 @@ def render(filtered_df, locations_df):
                     with cols[i]:
                         st.markdown(f"**{place}**")
 
-                        place_games = filtered_df[filtered_df['Lugar'] == place].sort_values('Date', ascending=False).head(6)
+                        place_games = filtered_df[filtered_df['Location'] == place].sort_values('Date', ascending=False).head(6)
 
                         if not place_games.empty:
                             streak_icons = {'W': '✅', 'L': '❌', 'N': '➖'}
