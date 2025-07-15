@@ -73,34 +73,38 @@ def render(filtered_df, locations_df):
             st.altair_chart(line_chart, use_container_width=True)
     st.divider()
 
-    # --- NUEVA SECCIÓN: Racha de los últimos 5 partidos ---
-    st.markdown("#### Estado de Forma en Lugares Frecuentes")
-    st.write("Racha de resultados en los últimos 5 partidos jugados en tus canchas más habituales.")
+    # --- NUEVA SECCIÓN: Racha de los últimos 6 partidos ---
+    st.markdown("#### 🏟️ Estado de Forma en Lugares Frecuentes")
+    st.write("Racha de resultados en los últimos 6 partidos jugados en tus canchas más habituales.")
 
     if "Lugar" in filtered_df.columns and not filtered_df.empty:
-        top_places_streak = filtered_df['Lugar'].value_counts().nlargest(5).index
+        top_places_streak = filtered_df['Lugar'].value_counts().nlargest(6).index.tolist()
 
         if len(top_places_streak) > 0:
-            cols = st.columns(len(top_places_streak))
+            rows = [top_places_streak[:3], top_places_streak[3:]]
             
-            for i, place in enumerate(top_places_streak):
-                with cols[i]:
-                    st.markdown(f"**{place}**")
-                    
-                    place_games = filtered_df[filtered_df['Lugar'] == place].sort_values('Date', ascending=False).head(5)
-                    
-                    if not place_games.empty:
-                        streak_icons = {'W': '✅', 'L': '❌', 'N': '➖'}
-                        streak_str = " ".join([streak_icons.get(res, '❓') for res in place_games['Result'][::-1]])
-                        wins_in_streak = (place_games['Result'] == 'W').sum()
-                        
-                        st.metric(
-                            label=f"Últimos {len(place_games)} Partidos",
-                            value=streak_str,
-                            delta=f"{wins_in_streak} Victorias",
-                            delta_color="normal"
-                        )
-                    else:
-                        st.write("No hay partidos recientes.")
+            for row in rows:
+                cols = st.columns(len(row))
+                for i, place in enumerate(row):
+                    with cols[i]:
+                        st.markdown(f"**{place}**")
+
+                        place_games = filtered_df[filtered_df['Lugar'] == place].sort_values('Date', ascending=False).head(6)
+
+                        if not place_games.empty:
+                            streak_icons = {'W': '✅', 'L': '❌', 'N': '➖'}
+                            streak_str = " ".join([streak_icons.get(res, '❓') for res in place_games['Result'][::-1]])
+                            wins_in_streak = (place_games['Result'] == 'W').sum()
+
+                            st.metric(
+                                label=f"Últimos {len(place_games)} Partidos",
+                                value=streak_str,
+                                delta=f"{wins_in_streak} Victorias",
+                                delta_color="normal"
+                            )
+                        else:
+                            st.write("No hay partidos recientes.")
         else:
             st.info("No hay lugares con suficientes partidos para mostrar una racha.")
+    else:
+        st.info("No hay datos disponibles para mostrar esta sección.")
