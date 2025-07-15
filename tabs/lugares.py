@@ -44,17 +44,17 @@ def render(filtered_df, locations_df):
     st.markdown("#### Evolución del Aporte (Merit Acumulado) por Lugar")
     st.write("Muestra cómo ha evolucionado tu aporte neto (Merit) en tus 5 canchas más frecuentes a lo largo del tiempo.")
     
-    if "Lugar" in filtered_df.columns and not filtered_df.empty:
-        top_places_evo = filtered_df['Lugar'].value_counts().nlargest(5).index
-        df_top_evo = filtered_df[filtered_df['Lugar'].isin(top_places_evo)].copy()
+    if "Location" in filtered_df.columns and not filtered_df.empty:
+        top_places_evo = filtered_df['Location'].value_counts().nlargest(5).index
+        df_top_evo = filtered_df[filtered_df['Location'].isin(top_places_evo)].copy()
 
         if not df_top_evo.empty:
             df_top_evo['Date'] = pd.to_datetime(df_top_evo['Date'])
             date_range = pd.date_range(start=df_top_evo['Date'].min(), end=df_top_evo['Date'].max(), freq='D')
-            multi_index = pd.MultiIndex.from_product([top_places_evo, date_range], names=['Lugar', 'Date'])
-            df_played = df_top_evo.groupby(['Lugar', 'Date'])['Merit'].sum().reset_index()
-            df_full = df_played.set_index(['Lugar', 'Date']).reindex(multi_index, fill_value=0).reset_index()
-            df_full['Merit_Cumsum'] = df_full.groupby('Lugar')['Merit'].cumsum()
+            multi_index = pd.MultiIndex.from_product([top_places_evo, date_range], names=['Location', 'Date'])
+            df_played = df_top_evo.groupby(['Location', 'Date'])['Merit'].sum().reset_index()
+            df_full = df_played.set_index(['Location', 'Date']).reindex(multi_index, fill_value=0).reset_index()
+            df_full['Merit_Cumsum'] = df_full.groupby('Location')['Merit'].cumsum()
             df_full['Tooltip_Merit'] = df_full['Merit'].replace(0, np.nan)
 
             line_chart = alt.Chart(df_full).mark_line().encode(
